@@ -10,9 +10,22 @@
 		996BAA472DF33C1B00C91B80 /* LaVideoLaPlusVue.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LaVideoLaPlusVue.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		99D543B02E6B57B900475DBA /* Exceptions for "LaVideoLaPlusVue" folder in "LaVideoLaPlusVue" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 996BAA462DF33C1B00C91B80 /* LaVideoLaPlusVue */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		996BAA492DF33C1B00C91B80 /* LaVideoLaPlusVue */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				99D543B02E6B57B900475DBA /* Exceptions for "LaVideoLaPlusVue" folder in "LaVideoLaPlusVue" target */,
+			);
 			path = LaVideoLaPlusVue;
 			sourceTree = "<group>";
 		};
@@ -256,6 +269,7 @@
 				DEVELOPMENT_TEAM = MM632MV27H;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LaVideoLaPlusVue/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -284,6 +298,7 @@
 				DEVELOPMENT_TEAM = MM632MV27H;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LaVideoLaPlusVue/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
