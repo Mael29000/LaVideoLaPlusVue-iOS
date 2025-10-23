@@ -15,7 +15,7 @@ struct VSLogo: View {
                 .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
             
             Text("VS")
-                .font(.system(size: size * 0.35, weight: .black, design: .rounded))
+                .font(.system(size: size * 0.25, weight: .black, design: .rounded))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [

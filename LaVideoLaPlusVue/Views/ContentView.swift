@@ -19,11 +19,11 @@ struct ContentView: View {
             if isShowingSplash {
                 SplashView()
             } else if !hasCompletedOnboarding {
-                OnboardingScreen(onFinish: {
-                    withAnimation(.easeInOut){
+                OnboardingScreen {
+                    withAnimation(.easeInOut) {
                         hasCompletedOnboarding = true
                     }
-                })
+                }
             } else {
                 MainAppView()
             }

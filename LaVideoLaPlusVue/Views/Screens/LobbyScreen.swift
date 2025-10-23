@@ -51,6 +51,7 @@ struct LobbyScreen: View {
                 // Particules décoratives
                 decorativeElements
                 
+                
                 // MARK: - Metal Door Close Transition Overlay
                 
                 // Transition de fermeture des portes métalliques pour lancer le jeu
@@ -194,7 +195,7 @@ struct LobbyScreen: View {
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 55)
+            .frame(height: 65)
             .background(
                 ZStack {
                     // Background gradient premium doré/orange (comme dans EndGameScreen)
@@ -248,6 +249,7 @@ struct LobbyScreen: View {
             isAnimating = true
         }
     }
+    
 }
 
 #Preview {

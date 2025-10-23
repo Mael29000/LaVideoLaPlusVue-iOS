@@ -1,6 +1,6 @@
 //
 //  SplashView.swift
-//  Summit
+//  LaVideoLaPlusVue
 //
 //  Created by Maël Suard on 13/03/2025.
 //
@@ -9,31 +9,31 @@
 import SwiftUI
 
 struct SplashView: View {
-    @State private var isActive = false
 
     var body: some View {
         
         VStack {
-            Image("ChamoisImage") // Replace with your actual logo asset
-                .resizable()
-                .scaledToFit()
-                .frame(width: 150, height: 150)
+            AppLogo(size: 150)
             
-            Text("Summit Store")
+            Text("LaVideoLaPlusVue")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-                .foregroundColor(Color("SummitBlack"))
+                .foregroundColor(.white)
         }
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                withAnimation {
-                    isActive = true
-                }
-            }
-        }
-        .fullScreenCover(isPresented: $isActive) {
-           // MainView() // Your main app view
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(red: 0.08, green: 0.12, blue: 0.25),
+                    Color(red: 0.15, green: 0.08, blue: 0.20),
+                    Color(red: 0.25, green: 0.08, blue: 0.15),
+                    Color(red: 0.20, green: 0.05, blue: 0.10)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea(.all)
+        )
     }
 }
 
