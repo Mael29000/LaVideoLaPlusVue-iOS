@@ -35,6 +35,18 @@ struct ContentView: View {
                     isShowingSplash = false
                 }
             }
+            
+            // Précharger les données en arrière-plan pendant le splash
+            Task {
+                do {
+                    // Charger les vidéos et précharger les avatars
+                    let _ = try await VideoService.shared.loadVideos()
+                    await YouTuberAvatarService.shared.preloadTopAvatars(limit: 15)
+                    print("🚀 App data preloaded successfully")
+                } catch {
+                    print("❌ Failed to preload app data: \(error)")
+                }
+            }
         }
     }
 }

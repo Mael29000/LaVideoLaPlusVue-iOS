@@ -8,6 +8,7 @@ struct Video: Codable, Identifiable, Hashable {
     let publishedAt: String
     let thumbnailUrl: String
     let viewCount: Int
+    let channelAvatarUrl: String?
     
     var formattedViewCount: String {
         let formatter = NumberFormatter()
@@ -28,5 +29,10 @@ struct Video: Codable, Identifiable, Hashable {
     
     var thumbnailURL: URL? {
         return URL(string: thumbnailUrl)
+    }
+    
+    var channelAvatarURL: URL? {
+        guard let channelAvatarUrl = channelAvatarUrl else { return nil }
+        return URL(string: channelAvatarUrl)
     }
 }

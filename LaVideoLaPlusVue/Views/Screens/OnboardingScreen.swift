@@ -179,18 +179,15 @@ struct OnboardingScreen: View {
             // Bouton YouTube style
             Button(action: nextStep) {
                 HStack(spacing: 12) {
-                    if currentStep == steps.count - 1 {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                    }
+               
                     
-                    Text(currentStep == steps.count - 1 ? "Commencer à jouer" : "Continuer")
+                    Text( "Continuer")
                         .font(.system(size: 16, weight: .semibold))
                     
-                    if currentStep < steps.count - 1 {
+                    
                         Image(systemName: "arrow.right")
                             .font(.system(size: 14, weight: .semibold))
-                    }
+                    
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)

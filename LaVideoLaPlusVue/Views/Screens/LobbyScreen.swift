@@ -1,8 +1,9 @@
 //
-//  Lobby.swift
+//  LobbyScreen.swift
 //  LaVideoLaPlusVue
 //
 //  Created by Maël Suard on 06/06/2025.
+//  Redesigned with YouTube styling by Claude on 23/10/2025.
 //
 
 import SwiftUI
@@ -12,45 +13,35 @@ struct LobbyScreen: View {
     @State private var isAnimating = false
     @State private var showContent = false
     @State private var showCloseTransition = false
+    @State private var hasPreloadedAvatars = false
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background gradient moderne
-                backgroundGradient
+                // Background YouTube style
+                youtubeBackground
                 
-                // Contenu principal avec meilleure gestion de l'espace
+                // Contenu principal avec layout YouTube
                 VStack(spacing: 0) {
-                    // Top spacer pour centrage visuel
-                    Spacer()
-                        .frame(minHeight: 40, maxHeight: 80)
-                    
-                    // Header avec logo et titre
-                    headerSection
+                    // YouTube Header
+                    youtubeHeaderSection
                         .scaleEffect(showContent ? 1.0 : 0.8)
                         .opacity(showContent ? 1.0 : 0.0)
                         .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.2), value: showContent)
                     
-                    // Spacer flexible entre header et boutons
-                    Spacer()
-                        .frame(minHeight: 60, maxHeight: 120)
+                    // Zone principale avec avatars flottants
+                    mainContentSection(geometry: geometry)
+                        .scaleEffect(showContent ? 1.0 : 0.8)
+                        .opacity(showContent ? 1.0 : 0.0)
+                        .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.4), value: showContent)
                     
-                    // Section des boutons d'action
+                    // Section des boutons d'action (partie basse)
                     actionButtonsSection
                         .scaleEffect(showContent ? 1.0 : 0.8)
                         .opacity(showContent ? 1.0 : 0.0)
-                        .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.5), value: showContent)
-                    
-                    // Bottom spacer pour safe area
-                    Spacer()
-                        .frame(minHeight: 40, maxHeight: 60)
+                        .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.6), value: showContent)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, 20)
-                
-                // Particules décoratives
-                decorativeElements
-                
                 
                 // MARK: - Metal Door Close Transition Overlay
                 
@@ -67,19 +58,19 @@ struct LobbyScreen: View {
         .onAppear {
             showContent = true
             startDecorationAnimation()
+            preloadAvatarsIfNeeded()
         }
     }
     
-    // MARK: - Background
+    // MARK: - YouTube Background
     
     @ViewBuilder
-    private var backgroundGradient: some View {
+    private var youtubeBackground: some View {
         LinearGradient(
             colors: [
-                Color(red: 0.08, green: 0.12, blue: 0.25),  // Bleu marine foncé
-                Color(red: 0.15, green: 0.08, blue: 0.20),  // Bleu-violet
-                Color(red: 0.25, green: 0.08, blue: 0.15),  // Violet-rouge
-                Color(red: 0.20, green: 0.05, blue: 0.10)   // Rouge foncé
+                Color(red: 0.067, green: 0.067, blue: 0.067), // YouTube dark
+                Color(red: 0.05, green: 0.05, blue: 0.05),    // Plus sombre
+                Color.black
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -87,35 +78,75 @@ struct LobbyScreen: View {
         .ignoresSafeArea(.all)
     }
     
-    // MARK: - Header Section
+    // MARK: - YouTube Header Section
     
     @ViewBuilder
-    private var headerSection: some View {
-        VStack(spacing: 30) {
-            // Logo officiel de l'app avec animations
-            AppLogo(size: 140)
-                .shadow(color: .white.opacity(0.2), radius: 15)
-                .scaleEffect(isAnimating ? 1.02 : 1.0)
-                .animation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true), value: isAnimating)
-            
-            // Titre principal avec style moderne
-            VStack(spacing: 12) {
-                Text("LaVideoLaPlusVue")
-                    .font(.system(size: 28, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .shadow(color: .black.opacity(0.8), radius: 4, x: 2, y: 2)
+    private var youtubeHeaderSection: some View {
+        HStack {
+            // App logo area (style YouTube)
+            HStack(spacing: 12) {
+                AppLogo(size: 32)
                 
-                Text("Devine quelle vidéo a le plus de vues !")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white.opacity(0.95))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 10)
-                    .shadow(color: .black.opacity(0.6), radius: 3, x: 1, y: 1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("LaVideoLaPlusVue")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text("Le jeu des vues YouTube")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                }
             }
+            
+            Spacer()
         }
         .padding(.horizontal, 20)
+        .padding(.top, 10)
+        .padding(.bottom, 20)
+    }
+    
+    // MARK: - Main Content Section
+    
+    @ViewBuilder
+    private func mainContentSection(geometry: GeometryProxy) -> some View {
+        ZStack {
+            // Zone des avatars flottants (zone haute étendue)
+            VStack {
+                FloatingYouTuberAvatars(
+                    containerHeight: geometry.size.height * 0.72, // Zone étendue jusqu'aux boutons
+                    containerWidth: geometry.size.width
+                )
+                
+                Spacer()
+            }
+            
+            // Contenu central avec titre principal
+            VStack(spacing: 24) {
+                Spacer()
+                
+                // Titre principal avec style YouTube
+                VStack(spacing: 16) {
+                    Text("🎬")
+                        .font(.system(size: 48))
+                        .scaleEffect(isAnimating ? 1.1 : 1.0)
+                        .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
+                    
+                    Text("Devine quelle vidéo\na le plus de vues !")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                    
+                    Text("Compare les vidéos YouTube et teste tes connaissances")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
+                
+                Spacer()
+            }
+        }
     }
     
     // MARK: - Action Buttons Section
@@ -123,122 +154,106 @@ struct LobbyScreen: View {
     @ViewBuilder
     private var actionButtonsSection: some View {
         VStack(spacing: 16) {
-            // Bouton principal JOUER
-            playButton
+            // Bouton principal JOUER (style YouTube)
+            youtubePlayButton
             
-            // Bouton secondaire Hall of Fame
-            hallOfFameButton
+            // Bouton secondaire Hall of Fame (style YouTube)
+            youtubeHallOfFameButton
         }
         .padding(.horizontal, 20)
+        .padding(.bottom, 30)
     }
     
     @ViewBuilder
-    private var playButton: some View {
+    private var youtubePlayButton: some View {
         Button(action: {
             // Déclencher la transition de fermeture des portes
             showCloseTransition = true
         }) {
             HStack(spacing: 12) {
-                Image(systemName: "play.circle.fill")
+                // Icône play YouTube style
+                ZStack {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 24, height: 24)
+                    
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                        .offset(x: 1) // Centrage visuel
+                }
+                
+                Text("Commencer à jouer")
                     .font(.system(size: 16, weight: .semibold))
                 
-                Text("C'est parti !")
-                    .font(.system(size: 15, weight: .semibold))
-                
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 14, weight: .semibold))
                     .opacity(0.8)
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 65)
+            .frame(height: 56)
             .background(
-                ZStack {
-                    // Background gradient vert comme dans EndGameScreen
-                    LinearGradient(
-                        colors: [.green, .green.opacity(0.8)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    
-                    // Effet shine pour effet premium
-                    LinearGradient(
-                        colors: [.white.opacity(0.0), .white.opacity(0.2), .white.opacity(0.0)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                }
+                LinearGradient(
+                    colors: [Color.red, Color.red.opacity(0.8)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
             )
-            .cornerRadius(25)
-            .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 4)
-            .shadow(color: .green.opacity(0.6), radius: 4, x: 0, y: 2)
+            .cornerRadius(28)
+            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+            .shadow(color: .red.opacity(0.4), radius: 4, x: 0, y: 2)
         }
-        .scaleEffect(1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: showContent)
     }
     
     @ViewBuilder
-    private var hallOfFameButton: some View {
+    private var youtubeHallOfFameButton: some View {
         Button(action: {
             router.presentSheet(.hallOfFame)
         }) {
             HStack(spacing: 12) {
-                Image(systemName: "crown.fill")
+                Image(systemName: "trophy.fill")
                     .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.orange)
                 
-                Text("Accéder au Hall of Fame")
-                    .font(.system(size: 15, weight: .semibold))
+                Text("Hall of Fame")
+                    .font(.system(size: 16, weight: .medium))
+                
+                Spacer()
                 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
-                    .opacity(0.8)
+                    .opacity(0.6)
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 65)
+            .frame(height: 48)
+            .padding(.horizontal, 20)
             .background(
-                ZStack {
-                    // Background gradient premium doré/orange (comme dans EndGameScreen)
-                    LinearGradient(
-                        colors: [.gold, .yellow.opacity(0.8), .orange.opacity(0.9)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.white.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
                     )
-                    
-                    // Effet shine pour effet premium
-                    LinearGradient(
-                        colors: [.white.opacity(0.0), .white.opacity(0.2), .white.opacity(0.0)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                }
             )
-            .cornerRadius(25)
-            .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 4)
-            .shadow(color: Color.yellow.opacity(0.6), radius: 4, x: 0, y: 2)
         }
     }
     
-    // MARK: - Decorative Elements
+    // MARK: - Avatar Preloading
     
-    @ViewBuilder
-    private var decorativeElements: some View {
-        // Cercles flottants décoratifs
-        ForEach(0..<6, id: \.self) { index in
-            Circle()
-                .fill(.white.opacity(0.05))
-                .frame(width: CGFloat.random(in: 20...60))
-                .position(
-                    x: CGFloat.random(in: 50...350),
-                    y: CGFloat.random(in: 100...700)
-                )
-                .scaleEffect(isAnimating ? 1.2 : 0.8)
-                .animation(
-                    .easeInOut(duration: Double.random(in: 2...4))
-                    .repeatForever(autoreverses: true)
-                    .delay(Double(index) * 0.3),
-                    value: isAnimating
-                )
+    private func preloadAvatarsIfNeeded() {
+        guard !hasPreloadedAvatars else { return }
+        
+        Task {
+            // Précharger les avatars en arrière-plan pour des performances optimales
+            await YouTuberAvatarService.shared.preloadTopAvatars(limit: 20)
+            await YouTuberAvatarService.shared.preloadRandomAvatars(count: 10)
+            
+            await MainActor.run {
+                hasPreloadedAvatars = true
+                print("🎯 Avatars preloaded for lobby animations")
+            }
         }
     }
     
@@ -249,9 +264,9 @@ struct LobbyScreen: View {
             isAnimating = true
         }
     }
-    
 }
 
 #Preview {
     LobbyScreen()
+        .environmentObject(AppRouter())
 }
