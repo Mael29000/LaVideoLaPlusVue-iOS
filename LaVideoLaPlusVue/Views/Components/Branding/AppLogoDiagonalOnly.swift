@@ -1,21 +1,17 @@
 //
-//  AppLogo.swift
+//  AppLogoDiagonalOnly.swift
 //  LaVideoLaPlusVue
 //
-//  Created by Claude on 09/12/2025.
+//  Created by Claude on 25/10/2025.
 //
 
 import SwiftUI
 
 /**
- * Logo officiel de l'application reproduisant le design diagonal avec animations.
- *
- * Design:
- * - Background diagonal: bleu marine (gauche) et rouge (droite)
- * - Cercle blanc central avec "VS" en gradient rouge-violet
- * - Animations: rotation du background et pulsation du cercle
+ * Version du logo diagonal SANS le texte "VS" pour éviter le flou lors du scaling.
+ * Le texte VS est géré séparément pour rester toujours net.
  */
-struct AppLogo: View {
+struct AppLogoDiagonalOnly: View {
     let size: CGFloat
     @State private var isRotating = false
     @State private var isPulsating = false
@@ -27,16 +23,13 @@ struct AppLogo: View {
                 .rotationEffect(.degrees(isRotating ? 360 : 0))
                 .animation(.linear(duration: 20).repeatForever(autoreverses: false), value: isRotating)
             
-            // Cercle central blanc avec animation de pulsation
+            // Cercle central blanc (sans texte VS)
             Circle()
                 .fill(.white)
                 .frame(width: size * 0.65, height: size * 0.65)
                 .scaleEffect(isPulsating ? 1.05 : 1.0)
                 .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isPulsating)
                 .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 5)
-            
-            // Texte "VS" avec gradient
-            vsText
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
@@ -74,16 +67,6 @@ struct AppLogo: View {
         }
     }
     
-    // MARK: - Texte VS
-    
-    @ViewBuilder
-    private var vsText: some View {
-        Text("VS")
-            .font(.system(size: size * 0.25, weight: .black))
-            .fontWeight(.black)
-            .foregroundStyle(Color(red: 0.2, green: 0.2, blue: 0.2)) // Noir pastel
-    }
-    
     // MARK: - Animations
     
     private func startAnimations() {
@@ -98,33 +81,32 @@ struct AppLogo: View {
                 isPulsating = true
             }
         }
-        
     }
 }
 
 // MARK: - Preview
 
-#Preview("App Logo Sizes") {
+#Preview("App Logo Diagonal Only") {
     VStack(spacing: 30) {
-        Text("App Logo Variations")
+        Text("Logo Diagonal Sans Texte VS")
             .font(.title2)
             .fontWeight(.bold)
         
         HStack(spacing: 20) {
             VStack {
-                AppLogo(size: 60)
+                AppLogoDiagonalOnly(size: 60)
                 Text("Small (60pt)")
                     .font(.caption)
             }
             
             VStack {
-                AppLogo(size: 120)
+                AppLogoDiagonalOnly(size: 120)
                 Text("Medium (120pt)")
                     .font(.caption)
             }
             
             VStack {
-                AppLogo(size: 180)
+                AppLogoDiagonalOnly(size: 180)
                 Text("Large (180pt)")
                     .font(.caption)
             }
@@ -132,13 +114,4 @@ struct AppLogo: View {
     }
     .padding()
     .background(Color.gray.opacity(0.1))
-}
-
-#Preview("App Logo on Dark") {
-    ZStack {
-        Color.black
-            .ignoresSafeArea()
-        
-        AppLogo(size: 200)
-    }
 }

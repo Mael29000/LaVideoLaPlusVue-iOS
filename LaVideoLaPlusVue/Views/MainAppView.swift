@@ -20,34 +20,71 @@ struct MainAppView: View {
  
     @State private var isMenuVisible = false
     
+    // État pour notre modal custom
+    @State private var showCustomModal = false
+    @State private var currentModalDestination: AppDestination?
+    
+    // Pas besoin d'état de splash screen - LobbyScreen gère tout
+    
     
     
     var body: some View {
         ZStack {
+            // Background noir constant pour éviter tout flash blanc
+            LinearGradient(
+                colors: [
+                    Color(red: 0.067, green: 0.067, blue: 0.067), // YouTube dark
+                    Color(red: 0.05, green: 0.05, blue: 0.05),    // Plus sombre
+                    Color.black
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea(.all)
+            
+            // Contenu principal de l'app
             VStack(spacing: 0) {
-             
-                
                 appNavigation
-                              
             }
             
-          
+            // Modal custom overlay
+            if showCustomModal, let destination = currentModalDestination {
+                CustomModalOverlay(isPresented: $showCustomModal) {
+                    customModalContent(for: destination)
+                }
+                .zIndex(999)
+            }
+            
+            // Plus de SplashScreen séparé - LobbyScreen gère l'animation
         }
         .onAppear {
             // Load initial data when the app appears
             Task {
                 await hallOfFameViewModel.loadHallOfFame() // Fetch hall of fame data
             }
+            
+            // Plus besoin de gestion de loading - LobbyScreen s'en charge
+        }
+        .onChange(of: router.activeSheet) { newValue in
+            // Synchroniser avec notre modal custom
+            if let destination = newValue {
+                currentModalDestination = destination
+                showCustomModal = true
+                // Réinitialiser le router pour éviter les conflits
+                DispatchQueue.main.async {
+                    router.activeSheet = nil
+                }
+            }
+        }
+        .onChange(of: showCustomModal) { newValue in
+            if !newValue {
+                currentModalDestination = nil
+            }
         }
 //        .ignoresSafeArea()
         .animation(.easeInOut, value: isMenuVisible)
         .environmentObject(router)
         .environmentObject(NamespaceContainer(mainNamespace))  .environmentObject(hallOfFameViewModel)
-
-        .sheet(item: $router.activeSheet) { destination in
-            // Sheet content based on destination
-            sheetContent(for: destination)
-        }
     }
     
     // Simple view switching without NavigationStack
@@ -95,22 +132,20 @@ struct MainAppView: View {
     
 
     
-    // Sheet content based on destination
+    // Custom modal content based on destination
     @ViewBuilder
-    private func sheetContent(for destination: AppDestination) -> some View {
-            switch destination {
-            case .hallOfFame:
-                HallOfFameSheet()
-                    .presentationDragIndicator(.visible)
-            case .enterName:
-                EnterNameSheet(gameViewModel: gameViewModel)
-                    .presentationDetents([.fraction(0.75)])
-                
-            default:
-                EmptyView()
-            }
-        
+    private func customModalContent(for destination: AppDestination) -> some View {
+        switch destination {
+        case .hallOfFame:
+            HallOfFameSheet()
+        case .enterName:
+            EnterNameSheet(gameViewModel: gameViewModel)
+        default:
+            EmptyView()
+        }
     }
+    
+    // Plus de gestion Splash Screen - tout est dans LobbyScreen maintenant
 }
 
 #Preview {

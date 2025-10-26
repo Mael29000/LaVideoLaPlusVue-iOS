@@ -161,7 +161,7 @@ struct PerformanceGauge: View {
                 // Label humoristique au lieu des points
                 Text(humorousLabel)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white.opacity(0.8))
             }
             
             Spacer()
@@ -170,7 +170,7 @@ struct PerformanceGauge: View {
             if score >= 0 {
                 Text("\(score) points")
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
+                    .foregroundColor(.white)
                     .opacity(showLevelText ? 1.0 : 0.0)
                     .animation(.easeInOut.delay(0.5), value: showLevelText)
             }
@@ -246,7 +246,7 @@ struct PerformanceGauge: View {
                     // Label du jalon
                     Text("\(milestone)")
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.8))
                 }
                 
                 if milestone != 20 {
@@ -296,13 +296,13 @@ struct XPProgressBar: View {
             HStack {
                 Text("Niveau \(level)")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(.white)
                 
                 Spacer()
                 
                 Text("\(currentXP) / \(xpForNextLevel) XP")
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white.opacity(0.8))
             }
             
             // Barre de progression XP

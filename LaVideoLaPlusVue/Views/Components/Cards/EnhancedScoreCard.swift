@@ -97,7 +97,16 @@ struct EnhancedScoreCard: View {
     @ViewBuilder
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 24)
-            .fill(.ultraThinMaterial)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.16, green: 0.16, blue: 0.22), // Gris-bleu foncé
+                        Color(red: 0.13, green: 0.13, blue: 0.19)  // Plus sombre
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .overlay(
                 // Bordure colorée identique à la carte performance
                 RoundedRectangle(cornerRadius: 24)
@@ -204,7 +213,7 @@ struct EnhancedScoreCard: View {
             } else {
                 Text(ranking)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(.white)
             }
             
         }
@@ -219,7 +228,7 @@ struct EnhancedScoreCard: View {
             
             Text(performanceMessage)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.primary)
+                .foregroundColor(.white)
                 .multilineTextAlignment(.center)
             
        

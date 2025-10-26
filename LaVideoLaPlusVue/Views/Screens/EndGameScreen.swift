@@ -19,7 +19,6 @@ struct EndGameScreen: View {
     @State private var showOpenTransition = true
     @State private var showCloseTransition = false
     @State private var gradientOffset: CGFloat = 0
-    @State private var showHallOfFame: Bool = false
     
     // Animation states for progressive reveal
     @State private var showMainContent = false
@@ -99,9 +98,6 @@ struct EndGameScreen: View {
         .onDisappear {
             // Clean up if needed
         }
-        .sheet(isPresented: $showHallOfFame) {
-            HallOfFameSheet()
-        }
     }
     
     /**
@@ -112,9 +108,17 @@ struct EndGameScreen: View {
     private var endGameContent: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background principal clair qui occupe tout l'écran
-                Color(red: 0.96, green: 0.96, blue: 0.98)
-                    .ignoresSafeArea(.all)
+                // Background YouTube sombre (même que LobbyScreen)
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.067, green: 0.067, blue: 0.067), // YouTube dark
+                        Color(red: 0.05, green: 0.05, blue: 0.05),    // Plus sombre
+                        Color.black
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea(.all)
                 
                 VStack(spacing: 0) {
                     // MARK: - Header bleu complet (unsafe area + safe area)
@@ -122,6 +126,7 @@ struct EndGameScreen: View {
                     
                     // MARK: - Contenu principal scrollable
                     ScrollView {
+                        
                         VStack(spacing: 20) {
                             if showScoreCard {
                                 // MARK: - Enhanced Score Card with particles and animations
@@ -178,11 +183,11 @@ struct EndGameScreen: View {
                         .padding(.top, 20)
                         .padding(.bottom, 40)
                     }
-                    .background(Color(red: 0.96, green: 0.96, blue: 0.98))
+                    .background(Color.clear) // Transparent pour laisser voir le gradient sombre
                     
                     // MARK: - Boutons sticky en bas
                     newGameSection
-                        .background(Color(red: 0.96, green: 0.96, blue: 0.98))
+                        .background(Color.clear) // Transparent pour laisser voir le gradient sombre
                         .padding(.bottom, 0) // Let the system handle bottom safe area
                 }
             }
@@ -267,18 +272,15 @@ struct EndGameScreen: View {
             // Question
             Text("Une nouvelle partie ?")
                 .font(.system(size: 18, weight: .medium))
-                .foregroundColor(.black)
+                .foregroundColor(.white) // Blanc pour contraste sur fond sombre
             
             // Boutons
             HStack(spacing: 16) {
-                // Bouton "Je stop" - ferme l'application
+                // Bouton "Je stop" - retour à l'accueil
                 Button(action: {
-                    // Sound and haptic feedback
-                    soundManager.playSound(.button)
-                    hapticManager.trigger(.buttonPress)
-                    
-                    // Fermer l'application
-                    exit(0)
+                    // Retourner à l'écran d'accueil
+                    router.navigationStack.removeAll()
+                    router.path = NavigationPath()
                 }) {
                     HStack(spacing: 8) {
                         Image(systemName: "xmark.circle.fill")
@@ -287,6 +289,7 @@ struct EndGameScreen: View {
                             .font(.system(size: 16, weight: .medium))
                     }
                     .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
                     .background(
@@ -317,6 +320,8 @@ struct EndGameScreen: View {
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 24)
+                    .frame(maxWidth: .infinity)
+
                     .padding(.vertical, 12)
                     .background(
                         LinearGradient(
@@ -330,9 +335,8 @@ struct EndGameScreen: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
         .padding(.horizontal, 20)
+        .padding(.vertical, 24)
     }
     
     // MARK: - Best Score Helpers
@@ -451,7 +455,7 @@ struct EndGameScreen: View {
                     HStack(spacing: 8) {
                         Text("Performance")
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(.white) // Blanc pour contraste sur fond sombre
                         
                    
                     }
@@ -477,7 +481,16 @@ struct EndGameScreen: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.15, green: 0.15, blue: 0.2), // Gris-bleu foncé
+                            Color(red: 0.12, green: 0.12, blue: 0.18)  // Plus sombre
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(
@@ -504,7 +517,7 @@ struct EndGameScreen: View {
                     HStack {
                         Text("🏆 Hall of Fame")
                             .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.primary)
+                            .foregroundColor(.white) // Blanc pour contraste sur fond sombre
                         
                         Spacer()
                        
@@ -542,13 +555,14 @@ struct EndGameScreen: View {
                                 // Score au centre, style minimaliste avec effet
                                 Text("\(gameViewModel.bestScore)")
                                     .font(.system(size: 26, weight: .bold, design: .rounded))
-                                    .foregroundColor(.black)
-                                    .shadow(color: .white, radius: 1, x: 0, y: 0)
+                                    .foregroundColor(.white) // Blanc pour contraste sur fond sombre
+                                    .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1) // Ombre noire pour contraste
                                     .offset(y: -5)
                             }
                             
                             Text("Meilleur score")
                                 .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8)) // Blanc semi-transparent
                                 
                         }
                         
@@ -557,11 +571,11 @@ struct EndGameScreen: View {
                             HStack(spacing: 4) {
                                 Text("TOP")
                                     .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(.white.opacity(0.7)) // Blanc semi-transparent pour fond sombre
                                 
                                 Text(analyticsViewModel.hasValidData ? "\(analyticsViewModel.bestScorePercentage ?? 0)%" : "---%")
                                     .font(.system(size: 20, weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(.white) // Blanc pour contraste sur fond sombre
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
@@ -574,7 +588,7 @@ struct EndGameScreen: View {
                     Rectangle()
                         .fill(
                             LinearGradient(
-                                colors: [.clear, .secondary.opacity(0.3), .clear],
+                                colors: [.clear, .white.opacity(0.3), .clear], // Blanc semi-transparent pour fond sombre
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -590,24 +604,40 @@ struct EndGameScreen: View {
         }
         .background(
             ZStack {
-                // Fond principal
+                // Fond principal sombre contrasté
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.18, green: 0.18, blue: 0.25), // Gris-bleu foncé
+                                Color(red: 0.15, green: 0.15, blue: 0.22)  // Plus sombre
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                 
                 // Bordure premium pour les scores élevés
                 if gameViewModel.currentScore >= 20 {
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(
                             LinearGradient(
-                                colors: [.gold.opacity(0.6), .yellow.opacity(0.3), .gold.opacity(0.6)],
+                                colors: [.gold.opacity(0.8), .yellow.opacity(0.5), .gold.opacity(0.8)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             ),
-                            lineWidth: 1.5
+                            lineWidth: 2
+                        )
+                } else {
+                    // Bordure subtile pour tous les autres scores
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(
+                            Color.white.opacity(0.15),
+                            lineWidth: 1
                         )
                 }
             }
-            .shadow(color: .black.opacity(0.1), radius: 12, x: 0, y: 4)
+            .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 4)
         )
     }
         
@@ -616,11 +646,7 @@ struct EndGameScreen: View {
     @ViewBuilder
     private var premiumHallOfFameButton: some View {
         Button(action: {
-            // Sound and haptic feedback
-            soundManager.playSound(.button)
-            hapticManager.trigger(.buttonPress)
-            
-            showHallOfFame = true
+            router.presentSheet(.hallOfFame)
         }) {
             HStack(spacing: 12) {
                 Image(systemName: gameViewModel.currentScore >= 20 ? "crown.fill" : "list.number")

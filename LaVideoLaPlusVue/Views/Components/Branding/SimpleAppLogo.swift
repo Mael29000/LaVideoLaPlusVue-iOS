@@ -13,7 +13,7 @@ import SwiftUI
  * Design:
  * - Format carré avec coins arrondis
  * - Background diagonal: bleu marine (gauche) et rouge (droite)
- * - Cercle blanc central avec "VS" en gradient rouge-violet
+ * - Cercle blanc central avec "VS" en noir
  * - Aucune animation pour une intégration discrète dans les cartes
  */
 struct SimpleAppLogo: View {
@@ -30,7 +30,7 @@ struct SimpleAppLogo: View {
                 .frame(width: size * 0.65, height: size * 0.65)
                 .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 5)
             
-            // Texte "VS" avec gradient
+            // Texte "VS" en noir
             vsText
         }
         .frame(width: size, height: size)
@@ -93,9 +93,8 @@ struct SimpleAppLogo: View {
             .foregroundStyle(
                 LinearGradient(
                     colors: [
-                        Color(red: 0.8, green: 0.2, blue: 0.3),    // Rouge
-                        Color(red: 0.6, green: 0.15, blue: 0.4),   // Rouge-violet
-                        Color(red: 0.4, green: 0.1, blue: 0.5)     // Violet
+                        Color.black,                              // Pure black
+                        Color(red: 0.3, green: 0.3, blue: 0.3)   // Dark gray
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing

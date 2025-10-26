@@ -15,21 +15,24 @@ import SwiftUI
  * - Design premium avec couleurs et effets
  * - Gestion des cas vides (première utilisation)
  * - Indicateurs visuels pour les podiums (or, argent, bronze)
+ * - Dismiss automatique sur overscroll (bounce) vers le haut
  */
 struct HallOfFameSheet: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = HallOfFameViewModel()
     @State private var showEntries: Bool = false
+    @State private var scrollOffset: CGFloat = 0
+    @State private var isDismissing: Bool = false
     
     var body: some View {
         NavigationView {
             ZStack {
-                // Background gradient
+                // Background YouTube sombre (identique à LobbyScreen)
                 LinearGradient(
                     colors: [
-                        Color(red: 0.05, green: 0.05, blue: 0.15),
-                        Color(red: 0.1, green: 0.1, blue: 0.25),
-                        Color(red: 0.15, green: 0.15, blue: 0.35)
+                        Color(red: 0.067, green: 0.067, blue: 0.067), // YouTube dark
+                        Color(red: 0.05, green: 0.05, blue: 0.05),    // Plus sombre
+                        Color.black
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -167,23 +170,52 @@ struct HallOfFameSheet: View {
     
     @ViewBuilder
     private var hallOfFameList: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                ForEach(Array(viewModel.entries.enumerated()), id: \.element.id) { index, entry in
-                    HallOfFameRow(
-                        entry: entry,
-                        rank: index + 1,
-                        isVisible: showEntries
-                    )
-                    .animation(
-                        .spring(response: 0.6, dampingFraction: 0.8)
-                        .delay(Double(index) * 0.1), // Animation progressive
-                        value: showEntries
-                    )
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Contenu principal
+                    LazyVStack(spacing: 12) {
+                        ForEach(Array(viewModel.entries.enumerated()), id: \.element.id) { index, entry in
+                            HallOfFameRow(
+                                entry: entry,
+                                rank: index + 1,
+                                isVisible: showEntries
+                            )
+                            .animation(
+                                .spring(response: 0.6, dampingFraction: 0.8)
+                                .delay(Double(index) * 0.1), // Animation progressive
+                                value: showEntries
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 40)
                 }
+                .background(
+                    GeometryReader { contentGeometry in
+                        Color.clear
+                            .onAppear {
+                                // Calculer la position initiale
+                                let frame = contentGeometry.frame(in: .named("scroll"))
+                                scrollOffset = frame.minY
+                            }
+                            .onChange(of: contentGeometry.frame(in: .named("scroll")).minY) { newValue in
+                                let previousOffset = scrollOffset
+                                scrollOffset = newValue
+                                
+                                // Vérifier si on fait un overscroll vers le haut
+                                if newValue > 0 && !isDismissing {
+                                    // Si on dépasse 60 points, on déclenche le dismiss
+                                    if newValue > 60 {
+                                        isDismissing = true
+                                        dismiss()
+                                    }
+                                }
+                            }
+                    }
+                )
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 40)
+            .coordinateSpace(name: "scroll")
         }
         .onAppear {
             // Déclencher l'animation d'apparition progressive
@@ -322,27 +354,31 @@ struct HallOfFameRow: View {
     private var backgroundColor: Color {
         switch rank {
         case 1:
-            return Color.yellow.opacity(0.15)
+            // Gradient doré plus contrasté pour le 1er
+            return Color(red: 0.25, green: 0.22, blue: 0.08) // Fond doré sombre
         case 2:
-            return Color.white.opacity(0.12)
+            // Gris-bleu contrasté pour le 2ème
+            return Color(red: 0.18, green: 0.18, blue: 0.25)
         case 3:
-            return Color.orange.opacity(0.12)
+            // Orange sombre contrasté pour le 3ème
+            return Color(red: 0.25, green: 0.18, blue: 0.12)
         default:
-            return Color.white.opacity(0.08)
+            // Gris sombre pour les autres
+            return Color(red: 0.15, green: 0.15, blue: 0.2)
         }
     }
     
     private var borderColor: Color {
         switch rank {
-        case 1: return .yellow.opacity(0.3)
-        case 2: return .white.opacity(0.3)
-        case 3: return .orange.opacity(0.3)
-        default: return .clear
+        case 1: return .yellow.opacity(0.6) // Plus visible sur fond sombre
+        case 2: return .white.opacity(0.5)  // Plus visible sur fond sombre
+        case 3: return .orange.opacity(0.6) // Plus visible sur fond sombre
+        default: return .white.opacity(0.15) // Bordure subtile pour tous
         }
     }
     
     private var borderWidth: CGFloat {
-        return rank <= 3 ? 1.5 : 0
+        return rank <= 3 ? 2.0 : 1.0 // Bordure pour tous, plus épaisse pour le podium
     }
     
     private var scoreColor: Color {

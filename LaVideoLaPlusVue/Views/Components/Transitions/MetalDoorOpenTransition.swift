@@ -185,15 +185,7 @@ private struct MetalDoorOpenOverlay: View {
                 visualCenterY: visualCenterY
             )
             .fill(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.1, green: 0.2, blue: 0.4),    // Bleu foncé métallique
-                        Color(red: 0.05, green: 0.15, blue: 0.35), // Plus sombre au centre
-                        Color(red: 0.08, green: 0.18, blue: 0.38)  // Variation pour relief
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                Color(red: 0.15, green: 0.25, blue: 0.45) // Blue: #26407A
             )
             .overlay(
                 // Rayures métalliques pour l'effet de texture
@@ -224,15 +216,7 @@ private struct MetalDoorOpenOverlay: View {
                 visualCenterY: visualCenterY
             )
             .fill(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.8, green: 0.3, blue: 0.3),    // Rouge métallique
-                        Color(red: 0.9, green: 0.25, blue: 0.25),  // Plus lumineux
-                        Color(red: 0.75, green: 0.35, blue: 0.35)  // Variation pour relief
-                    ],
-                    startPoint: .bottomTrailing,
-                    endPoint: .topLeading
-                )
+                Color(red: 0.9, green: 0.2, blue: 0.3) // Red: #E6334D
             )
             .overlay(
                 // Rayures métalliques pour l'effet de texture

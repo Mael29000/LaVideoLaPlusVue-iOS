@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23727" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+    <device id="retina6_12" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23721"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--View Controller-->
+        <scene sceneID="EHf-IW-A2E">
+            <objects>
+                <viewController id="01J-lp-oVM" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" id="Ze5-6b-2t3">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" misplaced="YES" image="background" translatesAutoresizingMaskIntoConstraints="NO" id="3j6-Cc-fCH">
+                                <rect key="frame" x="-7" y="0.0" width="393" height="852"/>
+                                <color key="backgroundColor" red="0.066666666666666666" green="0.066296984265734271" blue="0.066488199300699297" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                            </imageView>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="appLogo" translatesAutoresizingMaskIntoConstraints="NO" id="UEn-dD-Fwz">
+                                <rect key="frame" x="156.66666666666666" y="326" width="80" height="80"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="80" id="AxK-GA-JBf"/>
+                                    <constraint firstAttribute="width" constant="80" id="JEe-lz-a6L"/>
+                                </constraints>
+                            </imageView>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="LaVideoLaPlusVue" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="E1o-NH-imr">
+                                <rect key="frame" x="93" y="440" width="207" height="29"/>
+                                <fontDescription key="fontDescription" type="boldSystem" pointSize="24"/>
+                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Le jeu des vues YouTube" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="xnJ-x1-Ez0">
+                                <rect key="frame" x="103" y="477" width="187" height="21"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <color key="textColor" red="0.99519230769230771" green="0.99038461538461542" blue="1" alpha="0.70387520695364236" colorSpace="custom" customColorSpace="sRGB"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                        </subviews>
+                        <color key="backgroundColor" red="0.0660784527972028" green="0.066296984265734271" blue="0.066488199300699297" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <constraints>
+                            <constraint firstItem="E1o-NH-imr" firstAttribute="top" secondItem="UEn-dD-Fwz" secondAttribute="bottom" constant="34" id="0Kc-6q-QKo"/>
+                            <constraint firstAttribute="trailing" secondItem="3j6-Cc-fCH" secondAttribute="trailing" id="4Qw-az-zul"/>
+                            <constraint firstItem="xnJ-x1-Ez0" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="5mt-DN-mgI"/>
+                            <constraint firstItem="UEn-dD-Fwz" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="B3D-HK-CYp"/>
+                            <constraint firstAttribute="bottom" secondItem="3j6-Cc-fCH" secondAttribute="bottom" id="J51-Xl-aR1"/>
+                            <constraint firstItem="xnJ-x1-Ez0" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="NSa-KE-mqs"/>
+                            <constraint firstItem="3j6-Cc-fCH" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="R4y-zX-nzb"/>
+                            <constraint firstItem="3j6-Cc-fCH" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="Sb5-gb-erj"/>
+                            <constraint firstItem="E1o-NH-imr" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="eSy-0U-52O"/>
+                            <constraint firstItem="UEn-dD-Fwz" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" constant="-60" id="rCg-GH-fCr"/>
+                            <constraint firstItem="xnJ-x1-Ez0" firstAttribute="top" secondItem="E1o-NH-imr" secondAttribute="bottom" constant="8" id="tsW-mx-gOo"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="52.671755725190835" y="374.64788732394368"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="appLogo" width="200" height="200"/>
+        <image name="background" width="440" height="956"/>
+    </resources>
+</document>

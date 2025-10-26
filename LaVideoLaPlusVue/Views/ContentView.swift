@@ -12,13 +12,10 @@ import SwiftUI
 
 struct ContentView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
-    @State private var isShowingSplash = true
     
     var body: some View {
         ZStack {
-            if isShowingSplash {
-                SplashView()
-            } else if !hasCompletedOnboarding {
+            if !hasCompletedOnboarding {
                 OnboardingScreen {
                     withAnimation(.easeInOut) {
                         hasCompletedOnboarding = true
@@ -29,14 +26,7 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            // Show splash screen for 2 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                withAnimation {
-                    isShowingSplash = false
-                }
-            }
-            
-            // Précharger les données en arrière-plan pendant le splash
+            // Précharger les données en arrière-plan
             Task {
                 do {
                     // Charger les vidéos et précharger les avatars

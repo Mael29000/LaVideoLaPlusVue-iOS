@@ -38,11 +38,12 @@ struct EnterNameSheet: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Background gradient
+                // Background YouTube sombre (même que LobbyScreen et EndGameScreen)
                 LinearGradient(
                     colors: [
-                        Color(red: 0.95, green: 0.97, blue: 0.99),
-                        Color(red: 0.88, green: 0.92, blue: 0.98)
+                        Color(red: 0.067, green: 0.067, blue: 0.067), // YouTube dark
+                        Color(red: 0.05, green: 0.05, blue: 0.05),    // Plus sombre
+                        Color.black
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -89,7 +90,7 @@ struct EnterNameSheet: View {
             // Trophée animé
             Image(systemName: "trophy.fill")
                 .font(.system(size: 60))
-                .foregroundColor(.orange)
+                .foregroundColor(.gold)
                 .scaleEffect(showSuccess ? 1.2 : 1.0)
                 .animation(.easeInOut(duration: 0.6).repeatCount(3, autoreverses: true), value: showSuccess)
             
@@ -97,15 +98,15 @@ struct EnterNameSheet: View {
             VStack(spacing: 8) {
                 Text("Félicitations ! 🎉")
                     .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.black)
+                    .foregroundColor(.white) // Blanc pour contraste sur fond sombre
                 
                 Text("Score de \(gameViewModel.currentScore) points")
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.appBlue)
+                    .foregroundColor(.gold) // Or pour mise en valeur
                 
                 Text("Tu entres dans le Hall of Fame !")
                     .font(.system(size: 16, weight: .regular))
-                    .foregroundColor(.gray)
+                    .foregroundColor(.white.opacity(0.8)) // Blanc semi-transparent
                     .multilineTextAlignment(.center)
             }
         }
@@ -119,7 +120,7 @@ struct EnterNameSheet: View {
             // Instruction
             Text("Inscris ton nom :")
                 .font(.system(size: 18, weight: .medium))
-                .foregroundColor(.black)
+                .foregroundColor(.white) // Blanc pour contraste sur fond sombre
                 .frame(maxWidth: .infinity, alignment: .leading)
             
             // Champ de saisie
@@ -128,12 +129,22 @@ struct EnterNameSheet: View {
                     .font(.system(size: 18, weight: .medium))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
-                    .background(Color.white)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.15, green: 0.15, blue: 0.2), // Gris-bleu foncé
+                                Color(red: 0.12, green: 0.12, blue: 0.18)  // Plus sombre
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .foregroundColor(.white) // Texte en blanc
                     .cornerRadius(12)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
                             .stroke(
-                                showValidationError ? Color.red : Color.gray.opacity(0.3),
+                                showValidationError ? Color.red : Color.white.opacity(0.2),
                                 lineWidth: showValidationError ? 2 : 1
                             )
                     )
@@ -152,7 +163,7 @@ struct EnterNameSheet: View {
                     } else {
                         Text("\(playerName.count)/\(maxNameLength)")
                             .font(.system(size: 14))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.white.opacity(0.6)) // Blanc semi-transparent pour fond sombre
                     }
                     
                     Spacer()
@@ -185,9 +196,14 @@ struct EnterNameSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
-                    isValidName ? Color.green : Color.gray
+                    LinearGradient(
+                        colors: isValidName ? [.green, .green.opacity(0.8)] : [Color(red: 0.3, green: 0.3, blue: 0.35), Color(red: 0.25, green: 0.25, blue: 0.3)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
                 .cornerRadius(12)
+                .shadow(color: isValidName ? .green.opacity(0.3) : .clear, radius: 4, x: 0, y: 2)
                 .scaleEffect(isSubmitting ? 0.98 : 1.0)
                 .animation(.easeInOut(duration: 0.1), value: isSubmitting)
             }
@@ -197,7 +213,7 @@ struct EnterNameSheet: View {
             Button(action: skipNameEntry) {
                 Text("Passer")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.gray)
+                    .foregroundColor(.white.opacity(0.7)) // Blanc semi-transparent pour fond sombre
                     .padding(.vertical, 12)
             }
         }
@@ -232,7 +248,20 @@ struct EnterNameSheet: View {
             .padding(.vertical, 30)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.black.opacity(0.8))
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.15, green: 0.15, blue: 0.22),
+                                Color(red: 0.12, green: 0.12, blue: 0.18)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                    )
             )
             .scaleEffect(showSuccess ? 1.0 : 0.5)
             .opacity(showSuccess ? 1.0 : 0.0)

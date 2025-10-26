@@ -15,19 +15,9 @@ struct VSLogo: View {
                 .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
             
             Text("VS")
-                .font(.system(size: size * 0.25, weight: .black, design: .rounded))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.8, green: 0.2, blue: 0.3),    // Rouge
-                            Color(red: 0.6, green: 0.15, blue: 0.4),   // Rouge-violet
-                            Color(red: 0.4, green: 0.1, blue: 0.5)     // Violet
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .shadow(color: .black.opacity(0.2), radius: 2, x: 1, y: 1)
+                .font(.system(size: size * 0.35, weight: .black))
+                .fontWeight(.black)
+                .foregroundStyle(Color(red: 0.2, green: 0.2, blue: 0.2)) // Noir pastel
         }
     }
 }
