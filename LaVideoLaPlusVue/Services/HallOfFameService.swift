@@ -6,243 +6,268 @@
 //
 
 import Foundation
+import Supabase
+import Network
 
-/**
- * Service de gestion du Hall of Fame avec stockage local et synchronisation future API.
- *
- * Ce service gère :
- * - Le stockage local des scores (UserDefaults)
- * - Les données mockées pour le développement
- * - L'interface prête pour la future API
- * - La fusion des données locales et distantes
- *
- * ## Architecture
- * - Singleton pour cohérence globale
- * - Méthodes async prêtes pour l'API
- * - Données mockées réalistes
- * - Gestion d'erreurs complète
- */
-class HallOfFameService {
+class HallOfFameService: ObservableObject {
     static let shared = HallOfFameService()
     
-    private init() {}
+    @Published var isOnline = true
+    private let monitor = NWPathMonitor()
+    private let queue = DispatchQueue(label: "NetworkMonitor")
     
-    // MARK: - Constants
+    private let offlineQueueKey = "offlineHallOfFameQueue"
     
-    private let localStorageKey = "hallOfFame"
-    private let maxEntries = 10
+    init() {
+        setupNetworkMonitoring()
+        Task {
+            await syncOfflineEntries()
+        }
+    }
     
-    // MARK: - Public Methods
+    private func setupNetworkMonitoring() {
+        monitor.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                self?.isOnline = path.status == .satisfied
+                if path.status == .satisfied {
+                    Task {
+                        await self?.syncOfflineEntries()
+                    }
+                }
+            }
+        }
+        monitor.start(queue: queue)
+    }
     
-    /**
-     * Récupère la liste complète du Hall of Fame.
-     * Combine les données locales avec les données mockées de l'API.
-     *
-     * @return Liste des entrées triées par score décroissant
-     */
     func fetchHallOfFame() async throws -> [HallOfFameEntry] {
-        // Simuler un délai API réaliste
-        try await Task.sleep(nanoseconds: 800_000_000) // 0.8 secondes
+        guard isOnline else {
+            throw HallOfFameError.offline
+        }
         
-        // Récupérer les données locales
-        let localEntries = loadLocalEntries()
-        
-        // Récupérer les données mockées de l'API
-        let apiEntries = await fetchMockedApiEntries()
-        
-        // Fusionner et trier
-        let allEntries = mergeEntries(local: localEntries, api: apiEntries)
-        
-        print("🏆 [HallOfFame] Chargé \(allEntries.count) entrées (\(localEntries.count) locales, \(apiEntries.count) API)")
-        
-        return allEntries
-    }
-    
-    /**
-     * Sauvegarde une nouvelle entrée dans le Hall of Fame.
-     * Sauvegarde localement et prépare pour synchronisation API.
-     *
-     * @param entry La nouvelle entrée à sauvegarder
-     */
-    func saveEntry(_ entry: HallOfFameEntry) async throws {
-        // Sauvegarder localement d'abord
-        saveLocalEntry(entry)
-        
-        // Simuler l'envoi à l'API
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 secondes
-        
-        // TODO: Envoyer à l'API réelle quand disponible
-        await syncToApi(entry)
-        
-        print("🏆 [HallOfFame] Entrée sauvegardée : \(entry.name) - \(entry.score) points")
-    }
-    
-    /**
-     * Vérifie si un score mérite d'être dans le Hall of Fame.
-     *
-     * @param score Le score à vérifier
-     * @return True si le score entre dans le top 10
-     */
-    func isScoreWorthy(_ score: Int) async -> Bool {
         do {
-            let currentEntries = try await fetchHallOfFame()
+            print("🔄 Tentative de récupération du Hall of Fame...")
+            print("📍 URL: \(SupabaseConfig.projectURL)")
+            print("📊 Table: \(SupabaseConfig.hallOfFameTable)")
             
-            // Si moins de 10 entrées, le score est toujours worthy
-            if currentEntries.count < maxEntries {
+            let entries: [SupabaseHallOfFameEntry] = try await SupabaseConfig.client
+                .from(SupabaseConfig.hallOfFameTable)
+                .select()
+                .order("score", ascending: false)
+                .limit(SupabaseConfig.defaultLimit)
+                .execute()
+                .value
+            
+            print("✅ Récupéré \(entries.count) entrées")
+            
+            return entries.enumerated().map { index, entry in
+                let localEntry = entry.toLocalEntry(rank: index + 1)
+                return localEntry
+            }
+        } catch {
+            print("❌ Erreur fetch Hall of Fame: \(error)")
+            print("🔍 Type d'erreur: \(type(of: error))")
+            print("📝 Description: \(error.localizedDescription)")
+            throw HallOfFameError.fetchFailed
+        }
+    }
+    
+    func saveEntry(name: String, score: Int) async throws {
+        let insert = SupabaseHallOfFameInsert(
+            userName: name,
+            score: score
+        )
+        
+        print("🚀 Tentative de sauvegarde: \(name) - \(score)")
+        print("🌐 Statut en ligne: \(isOnline)")
+        
+        if isOnline {
+            do {
+                print("📡 Envoi à Supabase...")
+                let response = try await SupabaseConfig.client
+                    .from(SupabaseConfig.hallOfFameTable)
+                    .insert(insert)
+                    .execute()
+                
+                print("✅ Score sauvegardé avec succès: \(name) - \(score)")
+                print("📝 Réponse Supabase: \(response)")
+            } catch {
+                print("❌ Erreur sauvegarde Supabase: \(error)")
+                print("🔍 Type d'erreur: \(type(of: error))")
+                print("📋 Description complète: \(error.localizedDescription)")
+                // Sauvegarder hors ligne
+                saveOfflineEntry(name: name, score: score)
+                throw HallOfFameError.saveFailed
+            }
+        } else {
+            // Mode hors ligne
+            print("📴 Mode hors ligne - Sauvegarde locale")
+            saveOfflineEntry(name: name, score: score)
+            throw HallOfFameError.offline
+        }
+    }
+    
+    func isScoreWorthy(score: Int) async -> Bool {
+        // Vérifier le seuil minimum
+        guard score >= AppConfiguration.hallOfFameThreshold else {
+            return false
+        }
+        
+        // Si hors ligne, on considère que oui si > seuil
+        guard isOnline else {
+            return true
+        }
+        
+        do {
+            // Compter le nombre d'entrées
+            let count: Int = try await SupabaseConfig.client
+                .from(SupabaseConfig.hallOfFameTable)
+                .select("*", head: true, count: .exact)
+                .execute()
+                .count ?? 0
+            
+            // Si moins de 100 entrées, c'est worthy
+            if count < SupabaseConfig.defaultLimit {
                 return true
             }
             
-            // Vérifier si le score bat le plus faible du top 10
-            let lowestScore = currentEntries.last?.score ?? 0
-            return score > lowestScore
+            // Sinon, vérifier si le score bat le 100ème
+            let lowestScore: [SupabaseHallOfFameEntry] = try await SupabaseConfig.client
+                .from(SupabaseConfig.hallOfFameTable)
+                .select()
+                .order("score", ascending: false)
+                .limit(1)
+                .range(from: 99, to: 99)
+                .execute()
+                .value
             
+            return lowestScore.isEmpty || score > lowestScore[0].score
         } catch {
-            // En cas d'erreur, être optimiste
-            return score > 20
+            print("❌ Erreur vérification score: \(error)")
+            return true // En cas d'erreur, on laisse passer
         }
     }
     
-    /**
-     * Obtient le rang d'un score dans le classement global.
-     *
-     * @param score Le score à classer
-     * @return Le rang (1 = meilleur, 999+ = hors classement)
-     */
-    func getRankForScore(_ score: Int) async -> Int {
+    func getPlayerRanking(for playerName: String) async throws -> (rank: Int, total: Int, nearbyEntries: [HallOfFameEntry]) {
+        guard isOnline else {
+            throw HallOfFameError.offline
+        }
+        
         do {
-            let allEntries = try await fetchHallOfFame()
+            // Récupérer toutes les entrées triées
+            let allEntries: [SupabaseHallOfFameEntry] = try await SupabaseConfig.client
+                .from(SupabaseConfig.hallOfFameTable)
+                .select()
+                .order("score", ascending: false)
+                .execute()
+                .value
             
-            // Compter combien d'entrées ont un score supérieur
-            let betterScores = allEntries.filter { $0.score > score }.count
+            // Trouver le rang du joueur
+            guard let playerIndex = allEntries.firstIndex(where: { $0.userName == playerName }) else {
+                throw HallOfFameError.playerNotFound
+            }
             
-            return betterScores + 1
+            let rank = playerIndex + 1
+            let total = allEntries.count
             
+            // Obtenir les 50 avant et 50 après
+            let startIndex = max(0, playerIndex - 50)
+            let endIndex = min(allEntries.count - 1, playerIndex + 50)
+            
+            let nearbyEntries = Array(allEntries[startIndex...endIndex]).enumerated().map { index, entry in
+                let localEntry = HallOfFameEntry(
+                    name: entry.userName,
+                    score: entry.score,
+                    date: entry.createdAt,
+                    isPersonalBest: entry.userName == playerName
+                )
+                return localEntry
+            }
+            
+            return (rank, total, nearbyEntries)
         } catch {
-            // En cas d'erreur, retourner un rang conservateur
-            return score > 30 ? 1 : score > 20 ? 5 : 999
+            print("❌ Erreur récupération classement: \(error)")
+            throw HallOfFameError.fetchFailed
         }
     }
     
-    // MARK: - Local Storage
+    private func saveOfflineEntry(name: String, score: Int) {
+        let entry = OfflineHallOfFameEntry(userName: name, score: score)
+        
+        var queue = getOfflineQueue()
+        queue.append(entry)
+        
+        if let encoded = try? JSONEncoder().encode(queue) {
+            UserDefaults.standard.set(encoded, forKey: offlineQueueKey)
+            print("💾 Score sauvegardé hors ligne: \(name) - \(score)")
+        }
+    }
     
-    private func loadLocalEntries() -> [HallOfFameEntry] {
-        guard let data = UserDefaults.standard.data(forKey: localStorageKey),
-              let entries = try? JSONDecoder().decode([HallOfFameEntry].self, from: data) else {
+    private func getOfflineQueue() -> [OfflineHallOfFameEntry] {
+        guard let data = UserDefaults.standard.data(forKey: offlineQueueKey),
+              let queue = try? JSONDecoder().decode([OfflineHallOfFameEntry].self, from: data) else {
             return []
         }
-        return entries
+        return queue
     }
     
-    private func saveLocalEntry(_ entry: HallOfFameEntry) {
-        var existingEntries = loadLocalEntries()
-        existingEntries.append(entry)
+    private func syncOfflineEntries() async {
+        guard isOnline else { return }
         
-        // Trier et garder les 10 meilleurs
-        existingEntries.sort { $0.score > $1.score }
-        let topEntries = Array(existingEntries.prefix(maxEntries))
+        var queue = getOfflineQueue()
+        guard !queue.isEmpty else { return }
         
-        // Sauvegarder
-        if let encoded = try? JSONEncoder().encode(topEntries) {
-            UserDefaults.standard.set(encoded, forKey: localStorageKey)
-        }
-    }
-    
-    // MARK: - API Mocking
-    
-    /**
-     * Simule les données de l'API avec des entrées réalistes.
-     * Ces données seront remplacées par de vraies données API plus tard.
-     */
-    private func fetchMockedApiEntries() async -> [HallOfFameEntry] {
-        // Simuler un délai réseau variable
-        let randomDelay = Double.random(in: 200...600) // 0.2 à 0.6 secondes
-        try? await Task.sleep(nanoseconds: UInt64(randomDelay * 1_000_000))
+        print("🔄 Début synchronisation de \(queue.count) entrées")
         
-        // Données mockées réalistes avec vrais noms français
-        let mockedEntries = [
-            HallOfFameEntry(name: "Alexandre", score: 45, date: Date().addingTimeInterval(-3600 * 24 * 2), isPersonalBest: true),
-            HallOfFameEntry(name: "Marine", score: 38, date: Date().addingTimeInterval(-3600 * 12), isPersonalBest: true),
-            HallOfFameEntry(name: "Thomas", score: 35, date: Date().addingTimeInterval(-3600 * 6), isPersonalBest: true),
-            HallOfFameEntry(name: "Camille", score: 32, date: Date().addingTimeInterval(-3600 * 48), isPersonalBest: false),
-            HallOfFameEntry(name: "Julien", score: 29, date: Date().addingTimeInterval(-3600 * 24), isPersonalBest: true),
-            HallOfFameEntry(name: "Emma", score: 27, date: Date().addingTimeInterval(-3600 * 18), isPersonalBest: true),
-            HallOfFameEntry(name: "Nicolas", score: 25, date: Date().addingTimeInterval(-3600 * 36), isPersonalBest: false),
-            HallOfFameEntry(name: "Sophie", score: 23, date: Date().addingTimeInterval(-3600 * 8), isPersonalBest: true),
-        ]
+        var failedEntries: [OfflineHallOfFameEntry] = []
         
-        // Simuler parfois des erreurs réseau (5% de chance)
-        if Double.random(in: 0...1) < 0.05 {
-            // Simuler une erreur réseau
-            return []
-        }
-        
-        return mockedEntries
-    }
-    
-    /**
-     * Simule la synchronisation avec l'API.
-     * Prépare l'interface pour la vraie API.
-     */
-    private func syncToApi(_ entry: HallOfFameEntry) async {
-        // Simuler l'envoi à l'API
-        let randomDelay = Double.random(in: 300...800)
-        try? await Task.sleep(nanoseconds: UInt64(randomDelay * 1_000_000))
-        
-        // TODO: Implémenter l'envoi réel à l'API
-        // Par exemple :
-        // - POST /api/hall-of-fame/entries
-        // - Authentification du joueur
-        // - Validation côté serveur
-        // - Gestion des erreurs réseau
-        
-        print("📡 [API Mock] Entrée synchronisée vers l'API : \(entry.name)")
-    }
-    
-    // MARK: - Data Merging
-    
-    /**
-     * Fusionne les données locales et API en évitant les doublons.
-     * Privilégie les données locales en cas de conflit.
-     */
-    private func mergeEntries(local: [HallOfFameEntry], api: [HallOfFameEntry]) -> [HallOfFameEntry] {
-        var mergedEntries: [HallOfFameEntry] = []
-        
-        // Ajouter toutes les entrées locales
-        mergedEntries.append(contentsOf: local)
-        
-        // Ajouter les entrées API qui ne sont pas en doublon
-        for apiEntry in api {
-            let isDuplicate = local.contains { localEntry in
-                localEntry.name.lowercased() == apiEntry.name.lowercased() && 
-                localEntry.score == apiEntry.score
-            }
-            
-            if !isDuplicate {
-                mergedEntries.append(apiEntry)
+        for entry in queue {
+            do {
+                let insert = SupabaseHallOfFameInsert(
+                    userName: entry.userName,
+                    score: entry.score
+                )
+                
+                try await SupabaseConfig.client
+                    .from(SupabaseConfig.hallOfFameTable)
+                    .insert(insert)
+                    .execute()
+                
+                print("✅ Synchronisé: \(entry.userName) - \(entry.score)")
+            } catch {
+                print("❌ Échec: \(entry.userName) - \(error)")
+                var failedEntry = entry
+                failedEntry.attempts += 1
+                if failedEntry.attempts < 3 {
+                    failedEntries.append(failedEntry)
+                }
             }
         }
         
-        // Trier par score décroissant et garder les 10 meilleurs
-        mergedEntries.sort { $0.score > $1.score }
-        return Array(mergedEntries.prefix(maxEntries))
+        // Mettre à jour la queue avec seulement les échecs
+        if let encoded = try? JSONEncoder().encode(failedEntries) {
+            UserDefaults.standard.set(encoded, forKey: offlineQueueKey)
+        }
+        
+        print("✅ Synchronisation terminée. \(failedEntries.count) échecs restants")
     }
 }
 
-// MARK: - Error Types
-
 enum HallOfFameError: LocalizedError {
-    case networkError
-    case invalidData
-    case serverError
+    case offline
+    case fetchFailed
+    case saveFailed
+    case playerNotFound
     
     var errorDescription: String? {
         switch self {
-        case .networkError:
-            return "Impossible de se connecter au serveur"
-        case .invalidData:
-            return "Données reçues invalides"
-        case .serverError:
-            return "Erreur du serveur"
+        case .offline:
+            return "Pas de connexion Internet"
+        case .fetchFailed:
+            return "Impossible de récupérer le classement"
+        case .saveFailed:
+            return "Impossible de sauvegarder le score"
+        case .playerNotFound:
+            return "Joueur introuvable dans le classement"
         }
     }
 }

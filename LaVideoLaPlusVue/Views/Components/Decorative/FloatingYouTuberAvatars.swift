@@ -89,7 +89,7 @@ struct FloatingYouTuberAvatars: View {
                 }
             }
         } catch {
-            print("❌ Failed to load initial avatars: \(error)")
+            // Erreur silencieuse - pas critique
         }
     }
     
@@ -294,7 +294,7 @@ struct FloatingYouTuberAvatars: View {
             recentlyUsedYouTubers.removeFirst()
         }
         
-        print("🔄 Recently used cache: \(recentlyUsedYouTubers.count)/\(maxRecentlyUsed)")
+        // Cache mis à jour silencieusement
     }
     
     // MARK: - Transform All Effect

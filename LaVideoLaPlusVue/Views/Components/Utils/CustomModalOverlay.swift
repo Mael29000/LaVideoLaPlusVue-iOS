@@ -7,13 +7,15 @@ class ScrollToDismissController: ObservableObject {
     @Published var isAtTop: Bool = true
     @Published var pullOffset: CGFloat = 0
     
-    private let dismissThreshold: CGFloat = 30
+    var onDismiss: (() -> Void)?
+    
+    private let dismissThreshold: CGFloat = 50
     
     func updateScrollPosition(offset: CGFloat) {
         // On considère qu'on est en haut si offset est proche de 0 ou positif
         isAtTop = offset >= -5
         
-        // Si on est en haut et qu'on tire vers le haut (offset positif = pull down)
+        // Si on est en haut et qu'on tire vers le bas (offset positif = overscroll)
         if isAtTop && offset > 0 {
             pullOffset = offset
         } else {
@@ -108,15 +110,14 @@ struct CustomModalOverlay<Content: View>: View {
         }
         .onAppear {
             openModal()
+            // Configurer le callback de dismiss pour le scroll controller
+            scrollController.onDismiss = {
+                closeModal()
+            }
         }
         .onChange(of: isPresented) { newValue in
             if !newValue {
                 closeModalImmediately()
-            }
-        }
-        .onChange(of: scrollController.pullOffset) { offset in
-            if scrollController.shouldDismiss() {
-                closeModal()
             }
         }
     }
@@ -204,19 +205,23 @@ struct ScrollOffsetDetector: ViewModifier {
         content
             .background(
                 GeometryReader { proxy in
-                    let globalFrame = proxy.frame(in: .global)
                     let namedFrame = proxy.frame(in: .named("scroll"))
-                    // Utiliser la position globale par rapport au conteneur scroll
+                    // L'offset est la position Y dans le coordinate space "scroll"
                     let offset = namedFrame.minY
                     Color.clear
                         .preference(key: CustomScrollOffsetPreferenceKey.self, value: offset)
-                        .onAppear {
-                            print("📋 Geometry - Global: \(globalFrame.minY), Named: \(namedFrame.minY)")
+                        .onChange(of: offset) { newValue in
+                            print("📋 ScrollOffset changed to: \(newValue)")
                         }
                 }
             )
             .onPreferenceChange(CustomScrollOffsetPreferenceKey.self) { offset in
                 scrollController.updateScrollPosition(offset: offset)
+                
+                // Vérifier si on doit fermer la sheet
+                if scrollController.shouldDismiss() {
+                    scrollController.onDismiss?()
+                }
             }
     }
 }

@@ -7,31 +7,22 @@
 
 import SwiftUI
 
-/**
- * Sheet du Hall of Fame affichant les meilleurs scores sauvegardés localement.
- *
- * Cette sheet présente un classement élégant des 10 meilleurs scores avec :
- * - Animations d'apparition progressives
- * - Design premium avec couleurs et effets
- * - Gestion des cas vides (première utilisation)
- * - Indicateurs visuels pour les podiums (or, argent, bronze)
- * - Dismiss automatique sur overscroll (bounce) vers le haut
- */
 struct HallOfFameSheet: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = HallOfFameViewModel()
     @State private var showEntries: Bool = false
-    @State private var scrollOffset: CGFloat = 0
-    @State private var isDismissing: Bool = false
+    @State private var hasLoadedInitially: Bool = false
+    @State private var rowsVisible: Bool = false
+    @State private var selectedPlayerName: String? = nil
     
     var body: some View {
         NavigationView {
             ZStack {
-                // Background YouTube sombre (identique à LobbyScreen)
+                // Background
                 LinearGradient(
                     colors: [
-                        Color(red: 0.067, green: 0.067, blue: 0.067), // YouTube dark
-                        Color(red: 0.05, green: 0.05, blue: 0.05),    // Plus sombre
+                        Color(red: 0.067, green: 0.067, blue: 0.067),
+                        Color(red: 0.05, green: 0.05, blue: 0.05),
                         Color.black
                     ],
                     startPoint: .topLeading,
@@ -40,16 +31,32 @@ struct HallOfFameSheet: View {
                 .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // MARK: - Header
+                    // Header
                     headerSection
                     
-                    // MARK: - Content
-                    if viewModel.isLoading {
+                    // État de connexion
+                    if !viewModel.isOnline {
+                        offlineWarning
+                    }
+                    
+                    // Content
+                    if viewModel.isLoading || !hasLoadedInitially {
                         loadingState
+                    } else if !viewModel.isOnline {
+                        offlineState
+                    } else if viewModel.hasError {
+                        errorState
                     } else if viewModel.isEmpty {
                         emptyState
+                    } else if hasLoadedInitially && !viewModel.isPlayerInHallOfFame && !showEntries {
+                        // S'assurer que les données sont chargées avant d'afficher cet écran
+                        playerNotInHallOfFameState
+                    } else if hasLoadedInitially && (viewModel.isPlayerInHallOfFame || showEntries) {
+                        // Afficher le classement si le joueur y est ou s'il a cliqué pour voir
+                        hallOfFameContent
                     } else {
-                        hallOfFameList
+                        // État de transition - ne rien afficher pendant le chargement initial
+                        Color.clear
                     }
                 }
             }
@@ -57,6 +64,11 @@ struct HallOfFameSheet: View {
         .onAppear {
             Task {
                 await viewModel.loadHallOfFame()
+                // Après le chargement, si le joueur est dans le Hall of Fame, afficher directement les entrées
+                if viewModel.isPlayerInHallOfFame {
+                    showEntries = true
+                }
+                hasLoadedInitially = true
             }
         }
         .toolbar {
@@ -76,7 +88,6 @@ struct HallOfFameSheet: View {
     @ViewBuilder
     private var headerSection: some View {
         VStack(spacing: 16) {
-            // Titre avec trophée
             HStack(spacing: 12) {
                 Image(systemName: "trophy.fill")
                     .font(.system(size: 36))
@@ -88,17 +99,48 @@ struct HallOfFameSheet: View {
                     .foregroundColor(.white)
             }
             
-            // Sous-titre
-            Text("Les légendes de LaVideoLaPlusVue")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.white.opacity(0.8))
-                .multilineTextAlignment(.center)
+            if let playerName = selectedPlayerName,
+               let ranking = viewModel.playerRanking {
+                Text("Tu es \(formatRank(ranking.rank)) sur \(ranking.total) joueurs")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.yellow)
+            } else {
+                Text("Top 100 mondial")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+            }
         }
         .padding(.top, 20)
         .padding(.bottom, 30)
     }
     
-    // MARK: - Loading State
+    // MARK: - Offline Warning
+    
+    @ViewBuilder
+    private var offlineWarning: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 14))
+            
+            Text("Mode hors ligne - Les données peuvent être obsolètes")
+                .font(.system(size: 14))
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.orange.opacity(0.3))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.orange, lineWidth: 1)
+                )
+        )
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+    }
+    
+    // MARK: - States
     
     @ViewBuilder
     private var loadingState: some View {
@@ -107,21 +149,116 @@ struct HallOfFameSheet: View {
                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 .scaleEffect(1.5)
             
-            Text("Chargement du classement...")
+            Text("Connexion au serveur...")
                 .font(.system(size: 16))
                 .foregroundColor(.white.opacity(0.8))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
-    // MARK: - Empty State
+    @ViewBuilder
+    private var offlineState: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 80))
+                .foregroundColor(.white.opacity(0.3))
+            
+            VStack(spacing: 12) {
+                Text("Pas de connexion")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Text("Le Hall of Fame nécessite\nune connexion Internet")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                
+                if !viewModel.entries.isEmpty {
+                    Text("Affichage des données en cache")
+                        .font(.system(size: 14))
+                        .foregroundColor(.orange)
+                        .padding(.top, 8)
+                }
+            }
+            
+            Spacer()
+            
+            Button(action: {
+                Task {
+                    await viewModel.refreshHallOfFame()
+                }
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 18))
+                    
+                    Text("Réessayer")
+                        .font(.system(size: 18, weight: .semibold))
+                }
+                .foregroundColor(.black)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
+                .background(
+                    LinearGradient(
+                        colors: [.white, .white.opacity(0.8)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(25)
+            }
+            .padding(.bottom, 40)
+        }
+        .padding(.horizontal, 32)
+    }
+    
+    @ViewBuilder
+    private var errorState: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 80))
+                .foregroundColor(.red.opacity(0.8))
+            
+            VStack(spacing: 12) {
+                Text("Erreur")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Text(viewModel.errorMessage ?? "Une erreur est survenue")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+            }
+            
+            Spacer()
+            
+            Button(action: {
+                Task {
+                    await viewModel.refreshHallOfFame()
+                }
+            }) {
+                Text("Réessayer")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 14)
+                    .background(Color.white)
+                    .cornerRadius(25)
+            }
+            .padding(.bottom, 40)
+        }
+        .padding(.horizontal, 32)
+    }
     
     @ViewBuilder
     private var emptyState: some View {
         VStack(spacing: 24) {
             Spacer()
             
-            // Icône vide
             Image(systemName: "list.clipboard")
                 .font(.system(size: 80))
                 .foregroundColor(.white.opacity(0.3))
@@ -131,7 +268,7 @@ struct HallOfFameSheet: View {
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.white)
                 
-                Text("Sois le premier à dépasser\nles 20 points pour entrer\ndans la légende !")
+                Text("Dépasse les 10 points\npour rejoindre les légendes !")
                     .font(.system(size: 16))
                     .foregroundColor(.white.opacity(0.7))
                     .multilineTextAlignment(.center)
@@ -140,7 +277,6 @@ struct HallOfFameSheet: View {
             
             Spacer()
             
-            // Bouton de motivation
             Button(action: { dismiss() }) {
                 HStack(spacing: 8) {
                     Image(systemName: "gamecontroller.fill")
@@ -166,84 +302,185 @@ struct HallOfFameSheet: View {
         .padding(.horizontal, 32)
     }
     
-    // MARK: - Hall of Fame List
+    @ViewBuilder
+    private var playerNotInHallOfFameState: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            Image(systemName: "person.badge.clock")
+                .font(.system(size: 80))
+                .foregroundColor(.white.opacity(0.3))
+            
+            VStack(spacing: 12) {
+                Text("Tu n'es pas encore dans le Hall of Fame")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Text("Vous n'êtes pas encore présent, battez le score de 10 pour rejoindre les légendes")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+            }
+            
+            Spacer()
+            
+            Button(action: {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                    showEntries = true
+                }
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "trophy")
+                        .font(.system(size: 18))
+                    
+                    Text("Voir les légendes de la vidéo la plus vue")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
+                .background(
+                    LinearGradient(
+                        colors: [.white.opacity(0.2), .white.opacity(0.1)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 25)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                )
+                .cornerRadius(25)
+            }
+            .padding(.bottom, 40)
+        }
+        .padding(.horizontal, 32)
+    }
+    
+    // MARK: - Hall of Fame Content
+    
+    @ViewBuilder
+    private var hallOfFameContent: some View {
+        VStack(spacing: 16) {
+            // Options de vue
+            if let playerName = UserDefaults.standard.string(forKey: "playerName") {
+                HStack(spacing: 16) {
+                    Button(action: {
+                        selectedPlayerName = nil
+                        Task {
+                            await viewModel.loadHallOfFame()
+                        }
+                    }) {
+                        Text("Top 100")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(selectedPlayerName == nil ? .black : .white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                selectedPlayerName == nil ? Color.yellow : Color.white.opacity(0.2)
+                            )
+                            .cornerRadius(20)
+                    }
+                    
+                    Button(action: {
+                        selectedPlayerName = playerName
+                        Task {
+                            await viewModel.loadPlayerRanking(name: playerName)
+                        }
+                    }) {
+                        Text("Mon classement")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(selectedPlayerName != nil ? .black : .white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                selectedPlayerName != nil ? Color.yellow : Color.white.opacity(0.2)
+                            )
+                            .cornerRadius(20)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            
+            // Liste
+            hallOfFameList
+        }
+    }
     
     @ViewBuilder
     private var hallOfFameList: some View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 0) {
-                    // Contenu principal
                     LazyVStack(spacing: 12) {
                         ForEach(Array(viewModel.entries.enumerated()), id: \.element.id) { index, entry in
                             HallOfFameRow(
                                 entry: entry,
-                                rank: index + 1,
-                                isVisible: showEntries
+                                rank: getRankForEntry(entry, at: index),
+                                isVisible: rowsVisible,
+                                isHighlighted: entry.name == selectedPlayerName
                             )
                             .animation(
                                 .spring(response: 0.6, dampingFraction: 0.8)
-                                .delay(Double(index) * 0.1), // Animation progressive
-                                value: showEntries
+                                .delay(Double(index) * 0.05),
+                                value: rowsVisible
                             )
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 40)
                 }
-                .background(
-                    GeometryReader { contentGeometry in
-                        Color.clear
-                            .onAppear {
-                                // Calculer la position initiale
-                                let frame = contentGeometry.frame(in: .named("scroll"))
-                                scrollOffset = frame.minY
-                            }
-                            .onChange(of: contentGeometry.frame(in: .named("scroll")).minY) { newValue in
-                                let previousOffset = scrollOffset
-                                scrollOffset = newValue
-                                
-                                // Vérifier si on fait un overscroll vers le haut
-                                if newValue > 0 && !isDismissing {
-                                    // Si on dépasse 60 points, on déclenche le dismiss
-                                    if newValue > 60 {
-                                        isDismissing = true
-                                        dismiss()
-                                    }
-                                }
-                            }
-                    }
-                )
             }
-            .coordinateSpace(name: "scroll")
+            .refreshable {
+                await viewModel.refreshHallOfFame()
+            }
         }
         .onAppear {
-            // Déclencher l'animation d'apparition progressive
+            // Animation d'apparition pour la liste
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                showEntries = true
+                rowsVisible = true
             }
         }
     }
     
-    // MARK: - Data Loading handled by ViewModel
+    private func getRankForEntry(_ entry: HallOfFameEntry, at index: Int) -> Int {
+        if selectedPlayerName != nil, let ranking = viewModel.playerRanking {
+            // En mode classement personnel, calculer le vrai rang
+            // Si rank est 253 et qu'on montre 50 avant/après, index 0 = rang 203
+            let startRank = max(1, ranking.rank - 50)
+            return startRank + index
+        } else {
+            // En mode top 100
+            return index + 1
+        }
+    }
+    
+    private func formatRank(_ rank: Int) -> String {
+        switch rank {
+        case 1:
+            return "1er"
+        default:
+            return "\(rank)ème"
+        }
+    }
 }
 
 // MARK: - Hall of Fame Row
 
-/**
- * Ligne individuelle du classement avec design adaptatif selon le rang.
- */
 struct HallOfFameRow: View {
     let entry: HallOfFameEntry
     let rank: Int
     let isVisible: Bool
+    let isHighlighted: Bool
     
     var body: some View {
         HStack(spacing: 16) {
-            // MARK: - Rank Badge
+            // Rank Badge
             rankBadge
             
-            // MARK: - Player Info
+            // Player Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.name)
                     .font(.system(size: 18, weight: .bold))
@@ -256,7 +493,7 @@ struct HallOfFameRow: View {
             
             Spacer()
             
-            // MARK: - Score
+            // Score
             VStack(alignment: .trailing, spacing: 4) {
                 Text("\(entry.score)")
                     .font(.system(size: 24, weight: .black))
@@ -277,12 +514,21 @@ struct HallOfFameRow: View {
                         .stroke(borderColor, lineWidth: borderWidth)
                 )
         )
-        .scaleEffect(isVisible ? 1.0 : 0.8)
+        .scaleEffect(isVisible ? (isHighlighted ? 1.02 : 1.0) : 0.8)
         .opacity(isVisible ? 1.0 : 0.0)
         .offset(x: isVisible ? 0 : 50)
+        .shadow(
+            color: isHighlighted ? Color.yellow.opacity(0.4) : .clear,
+            radius: isHighlighted ? 10 : 0
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    isHighlighted ? Color.yellow : .clear,
+                    lineWidth: isHighlighted ? (rank <= 3 ? 2.5 : 3) : 0
+                )
+        )
     }
-    
-    // MARK: - Rank Badge
     
     @ViewBuilder
     private var rankBadge: some View {
@@ -296,12 +542,10 @@ struct HallOfFameRow: View {
                 )
             
             if rank <= 3 {
-                // Podium icons
                 Image(systemName: podiumIcon)
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(podiumIconColor)
             } else {
-                // Numéro de rang
                 Text("\(rank)")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.white)
@@ -354,31 +598,36 @@ struct HallOfFameRow: View {
     private var backgroundColor: Color {
         switch rank {
         case 1:
-            // Gradient doré plus contrasté pour le 1er
-            return Color(red: 0.25, green: 0.22, blue: 0.08) // Fond doré sombre
+            return Color(red: 0.25, green: 0.22, blue: 0.08)
         case 2:
-            // Gris-bleu contrasté pour le 2ème
             return Color(red: 0.18, green: 0.18, blue: 0.25)
         case 3:
-            // Orange sombre contrasté pour le 3ème
             return Color(red: 0.25, green: 0.18, blue: 0.12)
         default:
-            // Gris sombre pour les autres
             return Color(red: 0.15, green: 0.15, blue: 0.2)
         }
     }
     
     private var borderColor: Color {
+        // Si l'entrée est mise en évidence ET est dans le top 3, pas de bordure de base
+        if isHighlighted && rank <= 3 {
+            return .clear
+        }
+        
         switch rank {
-        case 1: return .yellow.opacity(0.6) // Plus visible sur fond sombre
-        case 2: return .white.opacity(0.5)  // Plus visible sur fond sombre
-        case 3: return .orange.opacity(0.6) // Plus visible sur fond sombre
-        default: return .white.opacity(0.15) // Bordure subtile pour tous
+        case 1: return .yellow.opacity(0.6)
+        case 2: return .white.opacity(0.5)
+        case 3: return .orange.opacity(0.6)
+        default: return .white.opacity(0.15)
         }
     }
     
     private var borderWidth: CGFloat {
-        return rank <= 3 ? 2.0 : 1.0 // Bordure pour tous, plus épaisse pour le podium
+        // Si l'entrée est mise en évidence ET est dans le top 3, pas de bordure de base
+        if isHighlighted && rank <= 3 {
+            return 0
+        }
+        return rank <= 3 ? 2.0 : 1.0
     }
     
     private var scoreColor: Color {

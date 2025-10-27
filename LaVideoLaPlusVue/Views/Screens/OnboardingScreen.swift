@@ -9,6 +9,11 @@ import SwiftUI
 
 struct OnboardingScreen: View {
     @State private var currentStep = 0
+    @State private var logoScale: CGFloat = 80.0 / 70.0  // Commence à la taille du launch screen (80) / taille finale (70)
+    @State private var logoOffsetY: CGFloat = 0  // Offset animé du logo
+    @State private var showInitialAnimation = false
+    @State private var logoOpacity: Double = 1.0
+    @State private var contentOpacity: Double = 0.0  // Le reste du contenu est invisible au début
     let onComplete: () -> Void
     
     private let steps = [
@@ -40,6 +45,7 @@ struct OnboardingScreen: View {
             VStack(spacing: 0) {
                 // Header avec logo YouTube
                 youtubeHeader
+                    .opacity(contentOpacity)
                 
                 Spacer()
                 
@@ -50,6 +56,13 @@ struct OnboardingScreen: View {
                 
                 // Bottom navigation YouTube style
                 youtubeBottomNavigation
+                    .opacity(contentOpacity)
+            }
+        }
+        .onAppear {
+            // Délai légèrement plus long pour s'assurer que tout est initialisé
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                startLogoAnimation()
             }
         }
     }
@@ -106,7 +119,24 @@ struct OnboardingScreen: View {
             ZStack {
                 if currentStep == 0 {
                     // Pas de cercles pour le logo de l'app - version simple
-                    SimpleAppLogo(size: 70)
+                    GeometryReader { geometry in
+                        AppLogo(size: 70)
+                            .scaleEffect(logoScale)
+                            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                            .offset(y: logoOffsetY)
+                            .opacity(logoOpacity)
+                            .onAppear {
+                                if !showInitialAnimation {
+                                    // Calculer l'offset initial
+                                    let screenHeight = UIScreen.main.bounds.height
+                                    let screenCenter = screenHeight / 2
+                                    let targetPositionInScreen = screenCenter - 60  // Position du launch screen
+                                    let currentPositionInScreen = geometry.frame(in: .global).midY
+                                    logoOffsetY = targetPositionInScreen - currentPositionInScreen
+                                }
+                            }
+                    }
+                    .frame(height: 120)  // Hauteur fixe pour le ZStack contenant le logo
                 } else {
                     // Cercles colorés pour les autres étapes
                     Circle()
@@ -140,6 +170,7 @@ struct OnboardingScreen: View {
                     .lineSpacing(6)
                     .padding(.horizontal, 32)
             }
+            .opacity(currentStep == 0 ? contentOpacity : 1.0)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 40)
@@ -214,6 +245,24 @@ struct OnboardingScreen: View {
             }
         } else {
             onComplete()
+        }
+    }
+    
+    // MARK: - Logo Animation
+    private func startLogoAnimation() {
+        showInitialAnimation = true
+        
+        // Animation douce et progressive du logo
+        withAnimation(.easeInOut(duration: 1.2)) {
+            logoOffsetY = 0  // Déplacement vers la position finale
+            logoScale = 1.0  // Retour à la taille normale (70 points)
+        }
+        
+        // Faire apparaître le reste du contenu après 0.4s
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            withAnimation(.easeIn(duration: 0.6)) {
+                contentOpacity = 1.0
+            }
         }
     }
 }

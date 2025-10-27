@@ -26,6 +26,16 @@ struct ContentView: View {
             }
         }
         .onAppear {
+            #if DEBUG
+            // Debug UserDefaults au démarrage
+            if let bundleID = Bundle.main.bundleIdentifier {
+                       UserDefaults.standard.removePersistentDomain(forName: bundleID)
+                       UserDefaults.standard.synchronize()
+                       print("🧼 UserDefaults reset for debug build")
+                   }
+            DebugUserDefaults.debugOnAppear()
+            #endif
+            
             // Précharger les données en arrière-plan
             Task {
                 do {

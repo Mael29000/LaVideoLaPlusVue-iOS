@@ -116,7 +116,7 @@ struct EnhancedScoreCard: View {
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        lineWidth: 2
+                        lineWidth: 1.5
                     )
             )
     }
@@ -249,8 +249,8 @@ struct EnhancedScoreCard: View {
     // Couleurs de bordure harmonisées avec la carte performance
     private var scoreCardBorderColors: [Color] {
         if isNewRecord {
-            // Vert avec touches dorées pour nouveau record
-            return [Color(red: 0.2, green: 0.8, blue: 0.5).opacity(0.4), Color(red: 0.6, green: 0.8, blue: 0.2).opacity(0.3)]
+            // Utilise les mêmes couleurs que la carte performance pour nouveau record
+            return PerformanceLevel.recordColors.map { $0.opacity(0.4) }
         }
         
         switch score {
@@ -275,8 +275,8 @@ struct EnhancedScoreCard: View {
     // Couleur d'ombre harmonisée avec la carte performance
     private var scoreCardShadowColor: Color {
         if isNewRecord {
-            // Vert pour nouveau record
-            return Color(red: 0.2, green: 0.8, blue: 0.5).opacity(0.1)
+            // Utilise la même couleur que la carte performance pour nouveau record
+            return PerformanceLevel.recordPrimaryColor.opacity(0.1)
         }
         
         switch score {

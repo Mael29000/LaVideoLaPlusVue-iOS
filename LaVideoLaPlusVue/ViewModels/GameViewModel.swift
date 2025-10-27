@@ -142,9 +142,9 @@ class GameViewModel: ObservableObject {
     
     /**
      * Détermine si le joueur mérite d'entrer dans le Hall of Fame.
-     * Condition: Score > 20 ET nouveau record personnel.
+     * Condition: Score >= 10 ET nouveau record personnel.
      */
     var shouldShowHallOfFameEntry: Bool {
-        return currentScore > 20 && currentScore == bestScore
+        return currentScore >= AppConfiguration.hallOfFameThreshold && currentScore == bestScore
     }
 }

@@ -39,7 +39,6 @@ class YouTuberAvatarService {
     func loadYouTubers() async throws -> [YouTuber] {
         // Si déjà chargé, retourner le cache
         if !uniqueYouTubers.isEmpty {
-            print("👤 YouTubers already loaded: \(uniqueYouTubers.count)")
             return uniqueYouTubers
         }
         
@@ -64,7 +63,7 @@ class YouTuberAvatarService {
         }
         
         uniqueYouTubers = Array(youTubersDict.values)
-        print("👤 Loaded \(uniqueYouTubers.count) unique YouTubers with avatars")
+//        print("👤 Loaded \(uniqueYouTubers.count) unique YouTubers with avatars")
         
         return uniqueYouTubers
     }
@@ -122,11 +121,11 @@ class YouTuberAvatarService {
             if let image = UIImage(data: data) {
                 await MainActor.run {
                     avatarCache[youtuber.id] = image
-                    print("✅ Avatar cached for: \(youtuber.name)")
+//                    print("✅ Avatar cached for: \(youtuber.name)")
                 }
             }
         } catch {
-            print("❌ Failed to cache avatar for \(youtuber.name): \(error)")
+            // Erreur silencieuse - pas critique pour l'UX
         }
     }
     
@@ -153,9 +152,9 @@ class YouTuberAvatarService {
                 }
             }
             
-            print("🎯 Preloaded \(topYouTubers.count) top YouTuber avatars")
+//            print("🎯 Preloaded \(topYouTubers.count) top YouTuber avatars")
         } catch {
-            print("❌ Failed to preload top avatars: \(error)")
+            // Erreur silencieuse - pas critique
         }
     }
     
@@ -174,9 +173,9 @@ class YouTuberAvatarService {
                 }
             }
             
-            print("🎲 Preloaded \(randomYouTubers.count) random YouTuber avatars")
+//            print("🎲 Preloaded \(randomYouTubers.count) random YouTuber avatars")
         } catch {
-            print("❌ Failed to preload random avatars: \(error)")
+            // Erreur silencieuse - pas critique
         }
     }
 }

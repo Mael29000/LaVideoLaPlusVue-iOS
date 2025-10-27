@@ -24,6 +24,21 @@ struct GameScreen: View {
     @State private var waitingForGameOverTap = false
     @State private var showMetalDoorTransition = false
     @State private var showOpenTransition = true
+    @State private var scorePulseScale: CGFloat = 1.0
+    
+    // Computed properties pour l'effet de record battu
+    private var isBeatingRecord: Bool {
+        viewModel.currentScore >= viewModel.bestScore && viewModel.currentScore > 0
+    }
+    
+    private var scoreColor: Color {
+        // Utiliser un jaune doré plus visible que le vert
+        if isBeatingRecord {
+            return Color(red: 1.0, green: 0.84, blue: 0.0) // Jaune doré
+        } else {
+            return .white
+        }
+    }
     
     enum FeedbackType {
         case correct
@@ -242,15 +257,15 @@ struct GameScreen: View {
      * Animation progressive du compteur de vues de la vidéo du bas.
      * Utilise une fonction d'easing pour un effet visuel fluide de "comptage".
      *
-     * Logique: Divise l'animation en 60 étapes sur 2.5 secondes pour un rendu smooth.
+     * Logique: Divise l'animation en 30 étapes sur 0.8 secondes pour un rendu rapide.
      */
     private func animateViewCount() async {
         guard let bottomVideo = viewModel.bottomVideo else { return }
         
         let targetCount = bottomVideo.viewCount  // Valeur finale à atteindre
         let startCount = animatedBottomCount     // Valeur de départ (souvent 0)
-        let duration: Double = 2.5               // Durée totale de l'animation
-        let steps = 60                           // Nombre d'étapes (équivalent à 24fps)
+        let duration: Double = 1.0               // Durée d'animation pour test
+        let steps = 30                           // Nombre d'étapes optimisé
         
         // Boucle d'animation: chaque step met à jour le compteur
         for i in 0...steps {
@@ -263,7 +278,7 @@ struct GameScreen: View {
                 animatedBottomCount = currentCount
             }
             
-            // Pause entre chaque frame (2.5s / 60 steps = ~42ms par frame)
+            // Pause entre chaque frame (0.8s / 30 steps = ~27ms par frame)
             try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000 / Double(steps)))
         }
     }
@@ -286,8 +301,40 @@ struct GameScreen: View {
         HStack {
             VStack(alignment: .leading, spacing: 8) {
                 Text("SCORE: \(viewModel.currentScore)")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.white)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(scoreColor)
+                        .scaleEffect(isBeatingRecord ? 1.1 : 1.0)
+                        .scaleEffect(scorePulseScale)
+                .padding(.horizontal, isBeatingRecord ? 8 : 0)
+                .padding(.vertical, isBeatingRecord ? 4 : 0)
+                .background(
+                    Group {
+                        if isBeatingRecord {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.yellow.opacity(0.2))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(scoreColor.opacity(0.6), lineWidth: 1.5)
+                                )
+                        }
+                    }
+                )
+                .shadow(color: isBeatingRecord ? scoreColor.opacity(0.4) : .clear, radius: 6, x: 0, y: 0)
+                .animation(.easeInOut(duration: 0.3), value: viewModel.currentScore)
+                .onChange(of: viewModel.currentScore) { oldValue, newValue in
+                    // Animation de croissance à chaque augmentation du score
+                    if newValue > oldValue {
+                        // Pulse du score
+                        withAnimation(.easeOut(duration: 0.1)) {
+                            scorePulseScale = 1.3
+                        }
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6).delay(0.1)) {
+                            scorePulseScale = 1.0
+                        }
+                        
+                        // Pas d'animation supplémentaire pour l'étoile
+                    }
+                }
                 
                 Text("BEST: \(viewModel.bestScore)")
                     .font(.system(size: 18, weight: .bold))

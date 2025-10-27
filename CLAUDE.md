@@ -8,18 +8,7 @@ LaVideoLaPlusVue is a SwiftUI-based iOS application that appears to be a game wi
 
 ## Build and Run Commands
 
-This is a standard Xcode project. To build and run:
-
-```bash
-# Open the project in Xcode
-open LaVideoLaPlusVue.xcodeproj
-
-# Build from command line (requires Xcode Command Line Tools)
-xcodebuild -project LaVideoLaPlusVue.xcodeproj -scheme LaVideoLaPlusVue -destination 'platform=iOS Simulator,name=iPhone 15' build
-
-# Run tests (if any exist)
-xcodebuild test -project LaVideoLaPlusVue.xcodeproj -scheme LaVideoLaPlusVue -destination 'platform=iOS Simulator,name=iPhone 15'
-```
+Claude code don't need try to build, run or test the project. The command won't work. Let the user handle that.
 
 ## Architecture
 

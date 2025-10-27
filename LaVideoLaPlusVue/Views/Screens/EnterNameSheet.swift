@@ -8,9 +8,9 @@
 import SwiftUI
 
 /**
- * Sheet pour la saisie du nom du joueur lors de son premier score > 20.
+ * Sheet pour la saisie du nom du joueur lors de son premier score >= 10.
  *
- * Cette sheet s'affiche automatiquement quand le joueur atteint un score supérieur à 20
+ * Cette sheet s'affiche automatiquement quand le joueur atteint un score supérieur ou égal à 10
  * pour la première fois et permet de sauvegarder son nom localement pour le Hall of Fame.
  *
  * ## Fonctionnalités

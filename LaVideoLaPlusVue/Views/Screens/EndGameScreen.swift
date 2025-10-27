@@ -32,6 +32,10 @@ struct EndGameScreen: View {
     @State private var showGameOverText = false
     @State private var showDino = false
     
+    // EnterNameSheet pour le Hall of Fame
+    @State private var showEnterNameSheet = false
+    @State private var hasCheckedHallOfFameEligibility = false
+    
     
     // Sound and haptic feedback
     private let soundManager = SoundManager.shared
@@ -94,9 +98,15 @@ struct EndGameScreen: View {
                 finalScore: gameViewModel.currentScore,
                 isNewRecord: isNewRecord
             )
+            
+            // Vérifier si le joueur peut entrer au Hall of Fame
+            checkHallOfFameEligibility()
         }
         .onDisappear {
             // Clean up if needed
+        }
+        .sheet(isPresented: $showEnterNameSheet) {
+            EnterNameSheet(gameViewModel: gameViewModel)
         }
     }
     
@@ -305,8 +315,7 @@ struct EndGameScreen: View {
                 
                 // Bouton "C'est parti !" - nouvelle partie
                 Button(action: {
-                    // Sound and haptic feedback
-                    soundManager.playSound(.button)
+                    // Haptic feedback only (no sound)
                     hapticManager.trigger(.buttonPress)
                     
                     // Déclencher la transition de fermeture des portes
@@ -617,25 +626,18 @@ struct EndGameScreen: View {
                         )
                     )
                 
-                // Bordure premium pour les scores élevés
-                if gameViewModel.currentScore >= 20 {
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(
-                            LinearGradient(
-                                colors: [.gold.opacity(0.8), .yellow.opacity(0.5), .gold.opacity(0.8)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 2
-                        )
-                } else {
-                    // Bordure subtile pour tous les autres scores
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(
-                            Color.white.opacity(0.15),
-                            lineWidth: 1
-                        )
-                }
+                // Bordure dorée toujours présente
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(
+                        LinearGradient(
+                            colors: gameViewModel.currentScore >= AppConfiguration.hallOfFameThreshold ? 
+                                [.gold.opacity(0.8), .yellow.opacity(0.5), .gold.opacity(0.8)] :
+                                [.gold.opacity(0.5), .yellow.opacity(0.3), .gold.opacity(0.5)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: gameViewModel.currentScore >= AppConfiguration.hallOfFameThreshold ? 2.5 : 1.5
+                    )
             }
             .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 4)
         )
@@ -649,10 +651,10 @@ struct EndGameScreen: View {
             router.presentSheet(.hallOfFame)
         }) {
             HStack(spacing: 12) {
-                Image(systemName: gameViewModel.currentScore >= 20 ? "crown.fill" : "list.number")
+                Image(systemName: gameViewModel.currentScore >= AppConfiguration.hallOfFameThreshold ? "crown.fill" : "list.number")
                     .font(.system(size: 16, weight: .semibold))
                 
-                Text(gameViewModel.currentScore >= 20 ? "Accéder au Hall of Fame" : "Voir le classement")
+                Text(gameViewModel.currentScore >= AppConfiguration.hallOfFameThreshold ? "Accéder au Hall of Fame" : "Voir les meilleurs en attendant")
                     .font(.system(size: 15, weight: .semibold))
                 
                 Image(systemName: "chevron.right")
@@ -726,11 +728,12 @@ struct EndGameScreen: View {
     
     private func motivationalMessage(for score: Int) -> String {
         switch score {
-        case 20...24: return "Bravo ! Vous êtes dans le classement ! 🎉"
-        case 25...29: return "Excellent score ! Continuez comme ça ! 🔥"
-        case 30...34: return "Performance remarquable ! 🌟"
-        case 35...: return "Score légendaire ! Vous dominez le classement ! 👑"
-        default: return "Félicitations ! 🎉"
+        case 10...14: return "Bravo ! Vous êtes dans le classement ! 🎉"
+        case 15...19: return "Excellent score ! Continuez comme ça ! 🔥"
+        case 20...24: return "Performance remarquable ! 🌟"
+        case 25...29: return "Score impressionnant ! 💪"
+        case 30...: return "Score légendaire ! Vous dominez le classement ! 👑"
+        default: return "Encore un effort pour rejoindre les légendes !"
         }
     }
     
@@ -894,6 +897,30 @@ struct EndGameScreen: View {
         return nil
     }
     
+    // MARK: - Hall of Fame Eligibility Check
+    
+    /**
+     * Vérifie si le joueur est éligible pour entrer au Hall of Fame et déclenche l'EnterNameSheet.
+     * Conditions : Score >= 20, nouveau record personnel, et nom pas encore enregistré.
+     */
+    private func checkHallOfFameEligibility() {
+        guard !hasCheckedHallOfFameEligibility else { return }
+        hasCheckedHallOfFameEligibility = true
+        
+        // Vérifier les conditions pour le Hall of Fame
+        let isEligible = gameViewModel.currentScore >= AppConfiguration.hallOfFameThreshold && 
+                        gameViewModel.currentScore == gameViewModel.bestScore
+        
+        // Vérifier si le nom n'a pas déjà été enregistré
+        let hasName = UserDefaults.standard.string(forKey: "playerName") != nil
+        
+        if isEligible && !hasName {
+            // Attendre que l'animation initiale soit terminée
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                showEnterNameSheet = true
+            }
+        }
+    }
 
 }
 

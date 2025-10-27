@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		999198872EAEBA9F00BB3F37 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 999198862EAEBA9F00BB3F37 /* PostgREST */; };
+		999198892EAEBA9F00BB3F37 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 999198882EAEBA9F00BB3F37 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		996BAA472DF33C1B00C91B80 /* LaVideoLaPlusVue.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LaVideoLaPlusVue.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +41,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				999198892EAEBA9F00BB3F37 /* Supabase in Frameworks */,
+				999198872EAEBA9F00BB3F37 /* PostgREST in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +85,8 @@
 			);
 			name = LaVideoLaPlusVue;
 			packageProductDependencies = (
+				999198862EAEBA9F00BB3F37 /* PostgREST */,
+				999198882EAEBA9F00BB3F37 /* Supabase */,
 			);
 			productName = LaVideoLaPlusVue;
 			productReference = 996BAA472DF33C1B00C91B80 /* LaVideoLaPlusVue.app */;
@@ -107,6 +116,9 @@
 			);
 			mainGroup = 996BAA3E2DF33C1B00C91B80;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				999198852EAEBA9F00BB3F37 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 996BAA482DF33C1B00C91B80 /* Products */;
 			projectDirPath = "";
@@ -339,6 +351,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		999198852EAEBA9F00BB3F37 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase-community/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		999198862EAEBA9F00BB3F37 /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 999198852EAEBA9F00BB3F37 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		999198882EAEBA9F00BB3F37 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 999198852EAEBA9F00BB3F37 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 996BAA3F2DF33C1B00C91B80 /* Project object */;
 }
