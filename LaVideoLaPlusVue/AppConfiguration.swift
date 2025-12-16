@@ -17,4 +17,7 @@ struct AppConfiguration {
     
     /// Durée du cache offline en secondes
     static let offlineCacheDuration: TimeInterval = 3600 // 1 heure
+    
+    /// Nombre minimum d'entrées dans le Hall of Fame pour afficher les classements
+    static let minimumEntriesForRanking = 100
 }

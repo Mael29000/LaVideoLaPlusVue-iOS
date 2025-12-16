@@ -72,15 +72,44 @@ class HallOfFameService: ObservableObject {
     }
     
     func saveEntry(name: String, score: Int) async throws {
-        let insert = SupabaseHallOfFameInsert(
-            userName: name,
-            score: score
-        )
-        
         print("🚀 Tentative de sauvegarde: \(name) - \(score)")
         print("🌐 Statut en ligne: \(isOnline)")
         
         if isOnline {
+            // Vérifier d'abord si le nom existe déjà
+            print("🔍 Vérification des doublons pour: \(name)")
+            do {
+                let existingEntries: [SupabaseHallOfFameEntry] = try await SupabaseConfig.client
+                    .from(SupabaseConfig.hallOfFameTable)
+                    .select()
+                    .eq("user_name", value: name)
+                    .limit(1)
+                    .execute()
+                    .value
+                
+                print("🔍 Entrées trouvées avec ce nom: \(existingEntries.count)")
+                
+                if !existingEntries.isEmpty {
+                    print("❌ DOUBLON DÉTECTÉ: \(name) existe déjà!")
+                    throw HallOfFameError.nameAlreadyExists
+                } else {
+                    print("✅ Nom disponible: \(name)")
+                }
+            } catch {
+                if error is HallOfFameError {
+                    print("❌ Re-throw erreur de doublon")
+                    throw error // Re-throw notre erreur de doublon
+                }
+                print("⚠️ Impossible de vérifier les doublons, on continue: \(error)")
+                // Continue avec la sauvegarde si la vérification échoue
+            }
+            
+            // Procéder à la sauvegarde
+            let insert = SupabaseHallOfFameInsert(
+                userName: name,
+                score: score
+            )
+            
             do {
                 print("📡 Envoi à Supabase...")
                 let response = try await SupabaseConfig.client
@@ -94,7 +123,7 @@ class HallOfFameService: ObservableObject {
                 print("❌ Erreur sauvegarde Supabase: \(error)")
                 print("🔍 Type d'erreur: \(type(of: error))")
                 print("📋 Description complète: \(error.localizedDescription)")
-                // Sauvegarder hors ligne
+                // Sauvegarder hors ligne pour les autres erreurs
                 saveOfflineEntry(name: name, score: score)
                 throw HallOfFameError.saveFailed
             }
@@ -144,6 +173,47 @@ class HallOfFameService: ObservableObject {
         } catch {
             print("❌ Erreur vérification score: \(error)")
             return true // En cas d'erreur, on laisse passer
+        }
+    }
+    
+    func getTotalEntryCount() async throws -> Int {
+        guard isOnline else {
+            throw HallOfFameError.offline
+        }
+        
+        do {
+            let count: Int = try await SupabaseConfig.client
+                .from(SupabaseConfig.hallOfFameTable)
+                .select("*", head: true, count: .exact)
+                .execute()
+                .count ?? 0
+            
+            return count
+        } catch {
+            print("❌ Erreur comptage entrées: \(error)")
+            throw HallOfFameError.fetchFailed
+        }
+    }
+    
+    func getScoreRank(for score: Int) async throws -> Int? {
+        guard isOnline else {
+            throw HallOfFameError.offline
+        }
+        
+        do {
+            // Compter combien d'entrées ont un score supérieur
+            let higherScores: Int = try await SupabaseConfig.client
+                .from(SupabaseConfig.hallOfFameTable)
+                .select("*", head: true, count: .exact)
+                .gt("score", value: score)
+                .execute()
+                .count ?? 0
+            
+            // Le rang est le nombre de scores supérieurs + 1
+            return higherScores + 1
+        } catch {
+            print("❌ Erreur calcul rang: \(error)")
+            throw HallOfFameError.fetchFailed
         }
     }
     
@@ -257,6 +327,7 @@ enum HallOfFameError: LocalizedError {
     case fetchFailed
     case saveFailed
     case playerNotFound
+    case nameAlreadyExists
     
     var errorDescription: String? {
         switch self {
@@ -268,6 +339,8 @@ enum HallOfFameError: LocalizedError {
             return "Impossible de sauvegarder le score"
         case .playerNotFound:
             return "Joueur introuvable dans le classement"
+        case .nameAlreadyExists:
+            return "Ce nom est déjà pris, pas de chance !"
         }
     }
 }

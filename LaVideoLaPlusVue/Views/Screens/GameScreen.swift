@@ -28,7 +28,7 @@ struct GameScreen: View {
     
     // Computed properties pour l'effet de record battu
     private var isBeatingRecord: Bool {
-        viewModel.currentScore >= viewModel.bestScore && viewModel.currentScore > 0
+        viewModel.currentScore > viewModel.previousBestScore && viewModel.currentScore > 0
     }
     
     private var scoreColor: Color {

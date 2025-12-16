@@ -17,6 +17,7 @@ class GameViewModel: ObservableObject {
     @Published var preloadedVideo: Video?
     @Published var currentScore: Int = 0
     @Published var bestScore: Int = 0
+    @Published var previousBestScore: Int = 0
     @Published var gameState: GameState = .loading
     
     private let videoService = VideoService.shared
@@ -38,6 +39,7 @@ class GameViewModel: ObservableObject {
     func startNewGame() async {
         gameState = .loading
         currentScore = 0
+        previousBestScore = bestScore // Sauvegarder le record actuel avant de commencer
         
         do {
             // Charger 3 vidéos différentes pour éviter les doublons
@@ -127,6 +129,7 @@ class GameViewModel: ObservableObject {
      */
     private func loadBestScore() {
         bestScore = UserDefaults.standard.integer(forKey: "bestScore")
+        previousBestScore = bestScore // Initialiser avec le score actuel
     }
     
     /**
@@ -135,6 +138,7 @@ class GameViewModel: ObservableObject {
      */
     private func updateBestScore() {
         if currentScore > bestScore {
+            previousBestScore = bestScore // Sauvegarder l'ancien record avant de le changer
             bestScore = currentScore
             UserDefaults.standard.set(bestScore, forKey: "bestScore")
         }
@@ -145,6 +149,6 @@ class GameViewModel: ObservableObject {
      * Condition: Score >= 10 ET nouveau record personnel.
      */
     var shouldShowHallOfFameEntry: Bool {
-        return currentScore >= AppConfiguration.hallOfFameThreshold && currentScore == bestScore
+        return currentScore >= AppConfiguration.hallOfFameThreshold && currentScore > previousBestScore
     }
 }

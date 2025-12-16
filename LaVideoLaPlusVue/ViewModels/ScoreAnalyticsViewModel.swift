@@ -34,6 +34,18 @@ class ScoreAnalyticsViewModel: ObservableObject {
     /// Pourcentage de classement du meilleur score (1-100, plus bas = meilleur)
     @Published var bestScorePercentage: Int?
     
+    /// Rang exact du score actuel
+    @Published var currentScoreRank: Int?
+    
+    /// Rang exact du meilleur score
+    @Published var bestScoreRank: Int?
+    
+    /// Rang exact du meilleur score pour l'affichage dans le Hall of Fame (toujours affiché)
+    @Published var bestScoreRankForHallOfFame: Int?
+    
+    /// Nombre total d'entrées dans le Hall of Fame
+    @Published var totalHallOfFameEntries: Int = 0
+    
     /// Message de performance basé sur le classement du score actuel
     @Published var performanceMessage: String = ""
     
@@ -49,6 +61,7 @@ class ScoreAnalyticsViewModel: ObservableObject {
     // MARK: - Private Properties
     
     private let analyticsService = ScoreAnalyticsService.shared
+    private let hallOfFameService = HallOfFameService.shared
     
     // MARK: - Public Methods
     
@@ -74,29 +87,76 @@ class ScoreAnalyticsViewModel: ObservableObject {
             error = nil
             currentScorePercentage = nil
             bestScorePercentage = nil
+            currentScoreRank = nil
+            bestScoreRank = nil
+            totalHallOfFameEntries = 0
             shouldCelebrate = false
             performanceMessage = ""
         }
         
         do {
-            // Calculer les deux classements en parallèle pour optimiser les performances
-            async let currentPercentage = analyticsService.getPlayerRankPercentage(score: currentScore)
-            async let bestPercentage = analyticsService.getPlayerRankPercentage(score: bestScore)
+            // D'abord, récupérer le nombre total d'entrées
+            let entryCount = try await hallOfFameService.getTotalEntryCount()
             
-            let (currentResult, bestResult) = await (currentPercentage, bestPercentage)
-            
-            // Mise à jour de l'état sur le thread principal
             await MainActor.run {
-                currentScorePercentage = currentResult
-                bestScorePercentage = bestResult
-                performanceMessage = analyticsService.getPerformanceMessage(for: currentResult)
-                shouldCelebrate = analyticsService.shouldCelebrate(percentage: currentResult)
-                isLoading = false
+                totalHallOfFameEntries = entryCount
             }
             
-            print("📊 [ScoreAnalytics] Score actuel: \(currentScore) → TOP \(currentResult)%")
-            print("📊 [ScoreAnalytics] Meilleur score: \(bestScore) → TOP \(bestResult)%")
-            print("📊 [ScoreAnalytics] Message: \(performanceMessage)")
+            // Toujours calculer le rang du meilleur score pour le Hall of Fame (si >= 10)
+            let bestScoreHallOfFameRank = bestScore >= AppConfiguration.hallOfFameThreshold ? 
+                try await hallOfFameService.getScoreRank(for: bestScore) : nil
+            
+            // Si on a assez d'entrées, calculer les rangs pour l'affichage principal
+            if entryCount >= AppConfiguration.minimumEntriesForRanking {
+                // Calculer les rangs exacts si les scores sont >= 10
+                async let currentRankTask = currentScore >= AppConfiguration.hallOfFameThreshold ? 
+                    hallOfFameService.getScoreRank(for: currentScore) : nil
+                async let bestRankTask = bestScore >= AppConfiguration.hallOfFameThreshold ? 
+                    hallOfFameService.getScoreRank(for: bestScore) : nil
+                
+                // Calculer les pourcentages aussi (pour d'autres usages éventuels)
+                async let currentPercentage = analyticsService.getPlayerRankPercentage(score: currentScore)
+                async let bestPercentage = analyticsService.getPlayerRankPercentage(score: bestScore)
+                
+                let (currentRank, bestRank, currentPct, bestPct) = try await (currentRankTask, bestRankTask, currentPercentage, bestPercentage)
+                
+                // Mise à jour de l'état sur le thread principal
+                await MainActor.run {
+                    currentScoreRank = currentRank
+                    bestScoreRank = bestRank
+                    bestScoreRankForHallOfFame = bestScoreHallOfFameRank
+                    currentScorePercentage = currentPct
+                    bestScorePercentage = bestPct
+                    performanceMessage = PerformanceMessages.getMessage(for: currentScore)
+                    shouldCelebrate = analyticsService.shouldCelebrate(percentage: currentPct)
+                    isLoading = false
+                }
+                
+                print("📊 [ScoreAnalytics] Total entrées: \(entryCount)")
+                print("📊 [ScoreAnalytics] Score actuel: \(currentScore) → Rang #\(currentRank ?? 0) / TOP \(currentPct)%")
+                print("📊 [ScoreAnalytics] Meilleur score: \(bestScore) → Rang #\(bestRank ?? 0) / TOP \(bestPct)%")
+                print("📊 [ScoreAnalytics] Meilleur score (Hall of Fame): \(bestScore) → Rang #\(bestScoreHallOfFameRank ?? 0)")
+            } else {
+                // Pas assez d'entrées pour l'affichage principal, mais on a quand même le rang pour le Hall of Fame
+                async let currentPercentage = analyticsService.getPlayerRankPercentage(score: currentScore)
+                async let bestPercentage = analyticsService.getPlayerRankPercentage(score: bestScore)
+                
+                let (currentPct, bestPct) = await (currentPercentage, bestPercentage)
+                
+                await MainActor.run {
+                    currentScorePercentage = currentPct
+                    bestScorePercentage = bestPct
+                    bestScoreRankForHallOfFame = bestScoreHallOfFameRank
+                    performanceMessage = PerformanceMessages.getMessage(for: currentScore)
+                    shouldCelebrate = analyticsService.shouldCelebrate(percentage: currentPct)
+                    isLoading = false
+                }
+                
+                print("📊 [ScoreAnalytics] Pas assez d'entrées (\(entryCount) < \(AppConfiguration.minimumEntriesForRanking))")
+                print("📊 [ScoreAnalytics] Score actuel: \(currentScore) → TOP \(currentPct)%")
+                print("📊 [ScoreAnalytics] Meilleur score: \(bestScore) → TOP \(bestPct)%")
+                print("📊 [ScoreAnalytics] Meilleur score (Hall of Fame): \(bestScore) → Rang #\(bestScoreHallOfFameRank ?? 0)")
+            }
             
         } catch {
             await MainActor.run {
@@ -124,6 +184,10 @@ class ScoreAnalyticsViewModel: ObservableObject {
     func reset() {
         currentScorePercentage = nil
         bestScorePercentage = nil
+        currentScoreRank = nil
+        bestScoreRank = nil
+        bestScoreRankForHallOfFame = nil
+        totalHallOfFameEntries = 0
         performanceMessage = ""
         isLoading = false
         error = nil
@@ -186,6 +250,58 @@ class ScoreAnalyticsViewModel: ObservableObject {
             return "bronze"    // Correct
         default:
             return "gray"      // À améliorer
+        }
+    }
+    
+    /**
+     * Texte formaté du rang exact du score actuel pour l'affichage UI.
+     * Retourne le rang uniquement si on a assez d'entrées et un score >= 10.
+     */
+    var displayedCurrentRank: String? {
+        guard totalHallOfFameEntries >= AppConfiguration.minimumEntriesForRanking,
+              let rank = currentScoreRank else { return nil }
+        
+        return formatRank(rank)
+    }
+    
+    /**
+     * Texte formaté du rang exact du meilleur score pour l'affichage UI.
+     * Retourne le rang uniquement si on a assez d'entrées et un score >= 10.
+     */
+    var displayedBestRank: String? {
+        guard totalHallOfFameEntries >= AppConfiguration.minimumEntriesForRanking,
+              let rank = bestScoreRank else { return nil }
+        
+        return formatRank(rank)
+    }
+    
+    /**
+     * Indique si on peut afficher des classements.
+     */
+    var canShowRankings: Bool {
+        return totalHallOfFameEntries >= AppConfiguration.minimumEntriesForRanking
+    }
+    
+    /**
+     * Texte formaté du rang exact du meilleur score pour l'affichage dans le Hall of Fame.
+     * TOUJOURS retourné si le score est >= 10 et qu'on a un rang, peu importe le nombre d'entrées.
+     */
+    var displayedBestRankForHallOfFame: String? {
+        guard let rank = bestScoreRankForHallOfFame else { return nil }
+        return formatRank(rank)
+    }
+    
+    // MARK: - Private Methods
+    
+    /**
+     * Formate un rang avec le bon suffixe (1er, 2ème, etc.)
+     */
+    private func formatRank(_ rank: Int) -> String {
+        switch rank {
+        case 1:
+            return "1er"
+        default:
+            return "\(rank)ème"
         }
     }
 }

@@ -18,7 +18,6 @@ struct EndGameScreen: View {
     
     @State private var showOpenTransition = true
     @State private var showCloseTransition = false
-    @State private var gradientOffset: CGFloat = 0
     
     // Animation states for progressive reveal
     @State private var showMainContent = false
@@ -36,6 +35,10 @@ struct EndGameScreen: View {
     @State private var showEnterNameSheet = false
     @State private var hasCheckedHallOfFameEligibility = false
     
+    // Message satirique pour nouveau record (mémorisé pour éviter les changements)
+    @State private var newRecordMessage: String = ""
+    // Message de performance normal (mémorisé pour éviter les changements)
+    @State private var performanceMessage: String = ""
     
     // Sound and haptic feedback
     private let soundManager = SoundManager.shared
@@ -46,10 +49,10 @@ struct EndGameScreen: View {
     
     /**
      * Détermine si le joueur vient de battre son record personnel.
-     * Condition : score actuel égal au meilleur score (nouveau record)
+     * Condition : score actuel strictement supérieur au précédent meilleur score
      */
     private var isNewRecord: Bool {
-        return gameViewModel.currentScore == gameViewModel.bestScore && gameViewModel.currentScore > 0
+        return gameViewModel.currentScore > gameViewModel.previousBestScore && gameViewModel.currentScore > 0
     }
     
     var body: some View {
@@ -81,6 +84,13 @@ struct EndGameScreen: View {
             }
         }
         .onAppear {
+            // Générer les messages une seule fois pour éviter les changements
+            if isNewRecord && newRecordMessage.isEmpty {
+                newRecordMessage = NewRecordMessages.getMessage(for: gameViewModel.currentScore)
+            } else if !isNewRecord && performanceMessage.isEmpty {
+                performanceMessage = PerformanceMessages.getMessage(for: gameViewModel.currentScore)
+            }
+            
             // Calculer les classements pour le score actuel ET le meilleur score
             Task {
                 await analyticsViewModel.calculateRankings(
@@ -103,7 +113,9 @@ struct EndGameScreen: View {
             checkHallOfFameEligibility()
         }
         .onDisappear {
-            // Clean up if needed
+            // Clean up - réinitialiser les messages pour la prochaine partie
+            newRecordMessage = ""
+            performanceMessage = ""
         }
         .sheet(isPresented: $showEnterNameSheet) {
             EnterNameSheet(gameViewModel: gameViewModel)
@@ -131,7 +143,7 @@ struct EndGameScreen: View {
                 .ignoresSafeArea(.all)
                 
                 VStack(spacing: 0) {
-                    // MARK: - Header bleu complet (unsafe area + safe area)
+                    // MARK: - Header section
                     headerSection
                     
                     // MARK: - Contenu principal scrollable
@@ -143,8 +155,9 @@ struct EndGameScreen: View {
                                 ZStack {
                                     EnhancedScoreCard(
                                         score: gameViewModel.currentScore,
-                                        ranking: analyticsViewModel.displayedCurrentRanking,
-                                        performanceMessage: analyticsViewModel.performanceMessage.isEmpty ? "Bien joué !" : analyticsViewModel.performanceMessage,
+                                        ranking: analyticsViewModel.canShowRankings && gameViewModel.currentScore >= AppConfiguration.hallOfFameThreshold ? 
+                                                (analyticsViewModel.displayedCurrentRank ?? "") : "",
+                                        performanceMessage: isNewRecord ? newRecordMessage : performanceMessage,
                                         isNewRecord: isNewRecord,
                                         animated: true
                                     )
@@ -174,7 +187,6 @@ struct EndGameScreen: View {
                                     ))
                             }
                             
-                            
                             // MARK: - Hall of Fame Access Card
                             if showHallOfFameCard {
                                 hallOfFameAccessCard
@@ -183,7 +195,6 @@ struct EndGameScreen: View {
                                         removal: .opacity
                                     ))
                             }
-                            
                             
                             // Espace pour les boutons sticky
                             Spacer()
@@ -202,25 +213,6 @@ struct EndGameScreen: View {
                 }
             }
         }
-        .onAppear {
-            // Calculer les classements pour le score actuel ET le meilleur score
-            Task {
-                await analyticsViewModel.calculateRankings(
-                    currentScore: gameViewModel.currentScore,
-                    bestScore: gameViewModel.bestScore
-                )
-            }
-            
-            // Start progressive reveal
-            startProgressiveReveal()
-            
-            // Play appropriate celebration sound
-            soundManager.playCelebration(finalScore: gameViewModel.currentScore)
-            hapticManager.triggerFinalPerformanceFeedback(
-                finalScore: gameViewModel.currentScore,
-                isNewRecord: isNewRecord
-            )
-        }
     }
     
     /**
@@ -228,9 +220,8 @@ struct EndGameScreen: View {
      */
     @ViewBuilder
     private var headerSection: some View {
-            
-            // Bandeau GAME OVER (zone safe area)
-            HStack(alignment: .center, spacing: 16) {
+        // Bandeau GAME OVER (zone safe area)
+        HStack(alignment: .center, spacing: 16) {
                 // GAME OVER avec police arcade
                 Text("GAME OVER")
                     .font(.custom("Bungee-Regular", size: 42))
@@ -259,7 +250,6 @@ struct EndGameScreen: View {
             .frame(maxWidth: .infinity, alignment: .center)
             .frame(height: 90)
             .padding(.horizontal, 20)
-//            .padding(.top, 10)
             .background(
                 LinearGradient(
                     colors: headerGradientColors,
@@ -268,10 +258,6 @@ struct EndGameScreen: View {
                 )
             )
         }
-    
-    
-        
-    
     
     /**
      * Section nouvelle partie avec choix utilisateur.
@@ -330,7 +316,6 @@ struct EndGameScreen: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 24)
                     .frame(maxWidth: .infinity)
-
                     .padding(.vertical, 12)
                     .background(
                         LinearGradient(
@@ -347,53 +332,6 @@ struct EndGameScreen: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
     }
-    
-    // MARK: - Best Score Helpers
-    
-    private var bestScoreIcon: Image {
-        switch gameViewModel.bestScore {
-        case 0...3: return Image(systemName: "tortoise.fill")
-        case 4...8: return Image(systemName: "hare.fill")
-        case 9...15: return Image(systemName: "star.fill")
-        case 16...18: return Image(systemName: "flame.fill")
-        case 19...20: return Image(systemName: "crown.fill")
-        default: return Image(systemName: "trophy.fill")
-        }
-    }
-    
-    private var bestScoreIconColor: Color {
-        switch gameViewModel.bestScore {
-        case 0...3: return .gray
-        case 4...8: return .orange
-        case 9...15: return .blue
-        case 16...18: return .red
-        case 19...20: return .purple
-        default: return .gold
-        }
-    }
-    
-    private var bestScoreGradientColors: [Color] {
-        switch gameViewModel.bestScore {
-        case 0...3: return [.gray.opacity(0.6), .gray]
-        case 4...8: return [.orange.opacity(0.6), .orange]
-        case 9...15: return [.blue.opacity(0.6), .blue]
-        case 16...20: return [.red.opacity(0.6), .red]
-        default: return [.red, .orange, .yellow]
-        }
-    }
-    
-    private var bestScoreHumorousLabel: String {
-        switch gameViewModel.bestScore {
-        case 0...3: return "Pas ouf"
-        case 4...8: return "À quelques refs"
-        case 9...15: return "Se débrouille"
-        case 16...18: return "À passé trop de temps sur YouTube"
-        case 19...20: return "Chômeur professionnel"
-        default: return "Légende absolue"
-        }
-    }
-    
-    
     
     // MARK: - Progressive Reveal Animation
     
@@ -452,39 +390,23 @@ struct EndGameScreen: View {
         }
     }
     
-    
     // MARK: - Enhanced Best Score Card
     
     @ViewBuilder
     private var enhancedBestScoreCard: some View {
         VStack(spacing: 16) {
             // Header avec score dans le laurier et TOP en haut à droite
-            HStack {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Text("Performance")
-                            .font(.headline)
-                            .foregroundColor(.white) // Blanc pour contraste sur fond sombre
-                        
-                   
-                    }
-                    
-                   
-                }
-                
-                Spacer()
-                
-            }
+            Text("Performance")
+                .font(.headline)
+                .foregroundColor(.white) // Blanc pour contraste sur fond sombre
             
             // Performance gauge avec légendes humoristiques
-           
-                PerformanceGauge(
-                    score: gameViewModel.currentScore,
-                    animated: true,
-                    showLabels: true,
-                    isNewRecord: isNewRecord
-                )
-              
+            PerformanceGauge(
+                score: gameViewModel.currentScore,
+                animated: true,
+                showLabels: true,
+                isNewRecord: isNewRecord
+            )
             
         }
         .padding(20)
@@ -529,8 +451,6 @@ struct EndGameScreen: View {
                             .foregroundColor(.white) // Blanc pour contraste sur fond sombre
                         
                         Spacer()
-                       
-                  
                     }
                 }
                 
@@ -575,16 +495,31 @@ struct EndGameScreen: View {
                                 
                         }
                         
-                        // TOP percentage en haut à droite avec style amélioré
+                        // Classement ou message en haut à droite
                         VStack(alignment: .trailing, spacing: 6) {
-                            HStack(spacing: 4) {
-                                Text("TOP")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.7)) // Blanc semi-transparent pour fond sombre
-                                
-                                Text(analyticsViewModel.hasValidData ? "\(analyticsViewModel.bestScorePercentage ?? 0)%" : "---%")
-                                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                                    .foregroundColor(.white) // Blanc pour contraste sur fond sombre
+                            Group {
+                                if gameViewModel.bestScore >= AppConfiguration.hallOfFameThreshold {
+                                    
+                                        // Afficher le rang exact (toujours visible pour le Hall of Fame)
+                                        Text(analyticsViewModel.displayedBestRankForHallOfFame ?? "---")
+                                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                                            .foregroundColor(.white)
+                                    
+                                    
+                                } else {
+                                    // Score trop bas
+                                    VStack(alignment: .center, spacing: 2) {
+                                        Text("Atteignez 10 points")
+                                            .font(.system(size: 11, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.7))
+                                        Text("pour intégrer")
+                                            .font(.system(size: 11, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.7))
+                                        Text("le Hall of Fame")
+                                            .font(.system(size: 11, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.7))
+                                    }
+                                }
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
@@ -642,8 +577,6 @@ struct EndGameScreen: View {
             .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 4)
         )
     }
-        
-
     
     @ViewBuilder
     private var premiumHallOfFameButton: some View {
@@ -693,49 +626,6 @@ struct EndGameScreen: View {
         .animation(.easeInOut(duration: 0.2), value: gameViewModel.currentScore)
     }
     
-    // MARK: - Ranking Helper Methods
-    
-    private func parseRanking(_ ranking: String) -> (place: Int?, percentage: Int?) {
-        // Parse "1er" ou "2ème" etc.
-        if ranking.contains("er") || ranking.contains("ème") {
-            let numberString = ranking.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-            return (Int(numberString), nil)
-        }
-        
-        // Parse "TOP 15%" etc.
-        if ranking.contains("TOP") && ranking.contains("%") {
-            let numberString = ranking.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-            return (nil, Int(numberString))
-        }
-        
-        return (nil, nil)
-    }
-    
-    private func rankingIcon(for place: Int) -> Image {
-        switch place {
-        case 1: return Image(systemName: "crown.fill")
-        case 2, 3: return Image(systemName: "medal.fill")
-        case 4...10: return Image(systemName: "star.fill")
-        case 11...50: return Image(systemName: "flame.fill")
-        default: return Image(systemName: "number.circle.fill")
-        }
-    }
-    
-    private func ordinalSuffix(_ number: Int) -> String {
-        if number == 1 { return "re" }
-        return "ème"
-    }
-    
-    private func motivationalMessage(for score: Int) -> String {
-        switch score {
-        case 10...14: return "Bravo ! Vous êtes dans le classement ! 🎉"
-        case 15...19: return "Excellent score ! Continuez comme ça ! 🔥"
-        case 20...24: return "Performance remarquable ! 🌟"
-        case 25...29: return "Score impressionnant ! 💪"
-        case 30...: return "Score légendaire ! Vous dominez le classement ! 👑"
-        default: return "Encore un effort pour rejoindre les légendes !"
-        }
-    }
     
     // MARK: - Header Performance Colors (basées sur la jauge de performance)
     
@@ -776,56 +666,6 @@ struct EndGameScreen: View {
         }
     }
     
-    // Gradient harmonisé avec les couleurs du score
-    private var scoreBasedTextGradient: LinearGradient {
-        if isNewRecord {
-            // Couleurs vertes pour nouveau record (même que le score)
-            return LinearGradient(
-                colors: [Color(red: 0.2, green: 0.8, blue: 0.5), Color(red: 0.6, green: 0.8, blue: 0.2)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-        
-        // Utilise les mêmes couleurs de bordure que la carte de score
-        switch gameViewModel.currentScore {
-        case 0...3:
-            // Gris sobre
-            return LinearGradient(
-                colors: [Color(red: 0.4, green: 0.4, blue: 0.4), Color(red: 0.5, green: 0.5, blue: 0.5)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        case 4...8:
-            // Bleu marine élégant
-            return LinearGradient(
-                colors: [Color(red: 0.2, green: 0.4, blue: 0.7), Color(red: 0.3, green: 0.5, blue: 0.8)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        case 9...15:
-            // Violet indigo classe
-            return LinearGradient(
-                colors: [Color(red: 0.4, green: 0.3, blue: 0.7), Color(red: 0.5, green: 0.4, blue: 0.8)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        case 16...19:
-            // Bordeaux sophistiqué
-            return LinearGradient(
-                colors: [Color(red: 0.6, green: 0.2, blue: 0.3), Color(red: 0.7, green: 0.3, blue: 0.4)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        default:
-            // Bordeaux profond pour 20+
-            return LinearGradient(
-                colors: [Color(red: 0.7, green: 0.1, blue: 0.2), Color(red: 0.8, green: 0.2, blue: 0.3)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-    }
     
     // Couleurs de bordure pour la carte performance (utilise le modèle unifié)
     private var performanceCardBorderColors: [Color] {
@@ -848,54 +688,6 @@ struct EndGameScreen: View {
         return performanceLevel.primaryColor.opacity(0.1)
     }
     
-    // MARK: - Helper Methods
-    
-    private func performanceLevelIcon(for score: Int) -> Image {
-        switch score {
-        case 0...10: return Image(systemName: "tortoise.fill")
-        case 11...20: return Image(systemName: "hare.fill")
-        case 21...30: return Image(systemName: "star.fill")
-        case 31...40: return Image(systemName: "flame.fill")
-        default: return Image(systemName: "crown.fill")
-        }
-    }
-    
-    private func performanceLevelColor(for score: Int) -> Color {
-        switch score {
-        case 0...10: return .gray
-        case 11...20: return .blue
-        case 21...30: return .green
-        case 31...40: return .orange
-        default: return .red
-        }
-    }
-    
-    private func performanceLevelText(for score: Int) -> String {
-        switch score {
-        case 0...10: return "Débutant"
-        case 11...20: return "Intermédiaire"
-        case 21...30: return "Avancé"
-        case 31...40: return "Expert"
-        default: return "Maître"
-        }
-    }
-    
-    private func calculateCurrentRanking() -> String? {
-        if analyticsViewModel.hasValidData {
-            // Simuler un classement basé sur le score
-            let score = gameViewModel.currentScore
-            switch score {
-            case 45...: return "1er"
-            case 40...44: return "dans le TOP 3"
-            case 35...39: return "dans le TOP 10"
-            case 30...34: return "dans le TOP 20"
-            case 25...29: return "dans le TOP 50"
-            case 20...24: return "dans le TOP 100"
-            default: return nil
-            }
-        }
-        return nil
-    }
     
     // MARK: - Hall of Fame Eligibility Check
     
@@ -909,7 +701,7 @@ struct EndGameScreen: View {
         
         // Vérifier les conditions pour le Hall of Fame
         let isEligible = gameViewModel.currentScore >= AppConfiguration.hallOfFameThreshold && 
-                        gameViewModel.currentScore == gameViewModel.bestScore
+                        gameViewModel.currentScore > gameViewModel.previousBestScore
         
         // Vérifier si le nom n'a pas déjà été enregistré
         let hasName = UserDefaults.standard.string(forKey: "playerName") != nil

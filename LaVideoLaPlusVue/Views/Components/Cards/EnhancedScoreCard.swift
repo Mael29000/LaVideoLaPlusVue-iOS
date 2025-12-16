@@ -70,7 +70,7 @@ struct EnhancedScoreCard: View {
                 .opacity(showContent ? 1.0 : 0.0)
         }
         .frame(maxWidth: .infinity)
-        .frame(minHeight: 180)
+        .frame(minHeight: isNewRecord || !ranking.isEmpty ? 180 : 160)
         .scaleEffect(cardScale)
         .shadow(
             color: scoreCardShadowColor,
@@ -129,8 +129,10 @@ struct EnhancedScoreCard: View {
             // Score principal avec effets
             scoreDisplay
             
-            // Ranking et performance
-            performanceInfo
+            // Ranking et performance (seulement si contenu)
+            if isNewRecord || !ranking.isEmpty {
+                performanceInfo
+            }
             
             Divider()
                 .opacity(0.5)
@@ -138,7 +140,7 @@ struct EnhancedScoreCard: View {
             // Message de performance
             messageSection
         }
-        .padding(.vertical, 24)
+        .padding(.vertical, isNewRecord || !ranking.isEmpty ? 24 : 20)
         .padding(.horizontal, 20)
     }
     
@@ -201,21 +203,15 @@ struct EnhancedScoreCard: View {
     
     @ViewBuilder
     private var performanceInfo: some View {
-        VStack(spacing: 8) {
-            // Record indicator ou ranking
-            if isNewRecord {
-                    
-                    
-                    Text("Nouveau Record !")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.green)
-                
-            } else {
-                Text(ranking)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-            }
-            
+        // Record indicator ou ranking
+        if isNewRecord {
+            Text("Nouveau Record !")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.green)
+        } else if !ranking.isEmpty {
+            Text(ranking)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white)
         }
     }
     

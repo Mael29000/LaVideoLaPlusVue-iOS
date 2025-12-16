@@ -82,21 +82,37 @@ class HallOfFameViewModel: ObservableObject {
                 score: score
             )
             
-            // Recharger les données
-            await loadHallOfFame()
-            
             print("🏆 Score sauvegardé : \(name) - \(score)")
             isSaving = false
+            
+            // Recharger les données en arrière-plan, sans faire échouer la sauvegarde
+            Task {
+                do {
+                    await loadHallOfFame()
+                } catch {
+                    print("⚠️ Rechargement du Hall of Fame échoué après sauvegarde : \(error)")
+                }
+            }
+            
             return true
             
         } catch {
+            print("🚨 ERREUR CATCHÉE dans HallOfFameViewModel: \(error)")
+            print("🚨 Type d'erreur: \(type(of: error))")
+            
             if let hallOfFameError = error as? HallOfFameError {
+                print("🚨 C'est bien un HallOfFameError: \(hallOfFameError)")
                 switch hallOfFameError {
                 case .offline:
                     errorMessage = "Score sauvegardé localement - Sera synchronisé à la reconnexion"
                     // C'est un succès partiel
                     isSaving = false
                     return true
+                case .nameAlreadyExists:
+                    print("🚨 GESTION DU DOUBLON dans ViewModel")
+                    errorMessage = hallOfFameError.localizedDescription
+                    isSaving = false
+                    return false
                 default:
                     errorMessage = hallOfFameError.localizedDescription
                 }

@@ -144,8 +144,8 @@ struct EnterNameSheet: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
                             .stroke(
-                                showValidationError ? Color.red : Color.white.opacity(0.2),
-                                lineWidth: showValidationError ? 2 : 1
+                                (showValidationError || hallOfFameViewModel.errorMessage != nil) ? Color.red : Color.white.opacity(0.2),
+                                lineWidth: (showValidationError || hallOfFameViewModel.errorMessage != nil) ? 2 : 1
                             )
                     )
                     .textInputAutocapitalization(.words)
@@ -154,10 +154,14 @@ struct EnterNameSheet: View {
                         submitName()
                     }
                 
-                // Indication de longueur
+                // Indication de longueur ou message d'erreur
                 HStack {
                     if showValidationError {
                         Text("Le nom doit faire entre \(minNameLength) et \(maxNameLength) caractères")
+                            .font(.system(size: 14))
+                            .foregroundColor(.red)
+                    } else if let errorMessage = hallOfFameViewModel.errorMessage {
+                        Text(errorMessage)
                             .font(.system(size: 14))
                             .foregroundColor(.red)
                     } else {
@@ -293,21 +297,39 @@ struct EnterNameSheet: View {
         
         isSubmitting = true
         showValidationError = false
+        hallOfFameViewModel.clearError() // Effacer les erreurs précédentes
         
         // Simuler un délai de sauvegarde
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            savePlayerName()
-            
-            isSubmitting = false
-            showSuccess = true
-            
-            // Haptic feedback pour succès
-            let successFeedback = UINotificationFeedbackGenerator()
-            successFeedback.notificationOccurred(.success)
-            
-            // Fermer après 2 secondes
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                dismiss()
+            Task {
+                await savePlayerName()
+                
+                // Vérifier si la sauvegarde a réussi avant de montrer le succès
+                if hallOfFameViewModel.errorMessage == nil {
+                    DispatchQueue.main.async {
+                        self.isSubmitting = false
+                        self.showSuccess = true
+                        
+                        // Haptic feedback pour succès
+                        let successFeedback = UINotificationFeedbackGenerator()
+                        successFeedback.notificationOccurred(.success)
+                        
+                        // Fermer après 2 secondes
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            self.dismiss()
+                        }
+                    }
+                } else {
+                    // Erreur (probablement un doublon) - permettre une nouvelle tentative
+                    DispatchQueue.main.async {
+                        self.isSubmitting = false
+                        self.showSuccess = false
+                        
+                        // Haptic feedback pour erreur
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
+                        impactFeedback.impactOccurred()
+                    }
+                }
             }
         }
     }
@@ -320,25 +342,21 @@ struct EnterNameSheet: View {
         dismiss()
     }
     
-    private func savePlayerName() {
+    private func savePlayerName() async {
         let trimmedName = playerName.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // Sauvegarder le nom dans UserDefaults
-        UserDefaults.standard.set(trimmedName, forKey: "playerName")
+        let success = await hallOfFameViewModel.saveScore(
+            name: trimmedName,
+            score: gameViewModel.currentScore,
+            from: gameViewModel
+        )
         
-        // Utiliser le nouveau ViewModel pour sauvegarder
-        Task {
-            let success = await hallOfFameViewModel.saveScore(
-                name: trimmedName,
-                score: gameViewModel.currentScore,
-                from: gameViewModel
-            )
-            
-            if success {
-                print("🏆 [HallOfFame] Nom sauvegardé : \(trimmedName) avec score \(gameViewModel.currentScore)")
-            } else {
-                print("❌ [HallOfFame] Échec sauvegarde : \(trimmedName)")
-            }
+        if success {
+            // Sauvegarder le nom dans UserDefaults seulement si la sauvegarde a réussi
+            UserDefaults.standard.set(trimmedName, forKey: "playerName")
+            print("🏆 [HallOfFame] Nom sauvegardé : \(trimmedName) avec score \(gameViewModel.currentScore)")
+        } else {
+            print("❌ [HallOfFame] Échec sauvegarde : \(trimmedName)")
         }
     }
     
